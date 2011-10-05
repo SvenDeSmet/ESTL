@@ -64,27 +64,6 @@ inline K add(const K a, const K b) { return komplex(a.r + b.r, a.i + b.i); };\n"
     int unitsIx = 0;\n";
     int unitCount = 0;
     for (int qL = 1; qL <= kL; ++qL) { unitCount += NL[qL - 1]; }
-    result <<"\
-    const K units[" << unitCount << "] = { ";
-    int unitIx = 0;
-    for (int qL = 1; qL <= kL; ++qL) {
-        for (int gL = 0; gL < AL[qL - 1]; ++gL) {
-            for (int sL = 0; sL < BL[qL - 1]; ++sL) {
-                if (unitIx++ > 0) result << ", ";
-                result << KomplexUnit(-gL*sL, NL[qL - 1]).toFloatString();
-            }
-        }
-    }
-    result << " };\n";
-/*    if (preTwiddle) {
-        result << "\
-    const K pretwiddles[" << Bq << "] = { ";
-        for (int t = 0; t < NG; ++t) {
-            if (t > 0) result << ", ";
-            result << KomplexUnit(-t, NG).toFloatString();
-        }
-        result << " };\n";
-    }*/
     result << "\
 //    int v = get_local_id(0); \n\
 //    int w = get_group_id(0); \n\
@@ -126,29 +105,31 @@ inline K add(const K a, const K b) { return komplex(a.r + b.r, a.i + b.i); };\n"
         defines << "    const int BL" << qL << " = " << BL[qL - 1] << ";\n";
         defines << "    const int fracLL_NL" << qL << " = " << (LL/NL[qL - 1]) << ";\n";
 
-        std::stringstream innerKernel;
+        std::stringstream subkernel;
+        for (int gL = 0; gL < AL[qL - 1]; ++gL) { subkernel << " { ";
+            for (int sL = 0; sL < BL[qL - 1]; ++sL) subkernel << "        K u" << sL << " = "<< KomplexUnit(-gL*sL, NL[qL - 1]).toFloatString() << ";\n";
+
+            std::stringstream innerKernel;
         for (int sL = 0; sL < BL[qL - 1]; ++sL) {
             innerKernel << "\
             K s" << sL << " = ";
             /*if (sL > 0)*/ innerKernel << "mul(u" << sL << ", ";
-            innerKernel << source << "[fracLL_NL" << qL << "*(BL" << qL << "*gL + " << sL << ") + zL]);\n";
+            innerKernel << source << "[fracLL_NL" << qL << "*(BL" << qL << "*" << gL << " + " << sL << ") + zL]);\n";
         }
         for (int hL = 0; hL < BL[qL - 1]; ++hL) {
             innerKernel << "\
-            " << target << "[fracLL_NL" << qL << "*(gL + AL" << qL << "*" << hL << ") + zL] = ";
+            " << target << "[fracLL_NL" << qL << "*(" << gL << " + AL" << qL << "*" << hL << ") + zL] = ";
             for (int sL = 0; sL < BL[qL - 1] - 1; ++sL) innerKernel << "add(";
             for (int sL = 0; sL < BL[qL - 1]; ++sL) { if (sL > 0) innerKernel << ", "; innerKernel << "mul(s" << sL << ", " << KomplexUnit(-hL*sL, BL[qL - 1]).toFloatString() << ")"; if (sL > 0) innerKernel << ");\n"; }
         }
 
-        std::stringstream subkernel; subkernel << "\
-        for (int gL = 0; gL < AL" << qL << "; ++gL) {";
-        for (int sL = 0; sL < BL[qL - 1]; ++sL) subkernel << "        K u" << sL << " = units[unitsIx + " << sL << "];\n";
         subkernel << "\
-        unitsIx += BL" << qL << ";\
         for (int zL = 0; zL < fracLL_NL" << qL << "; ++zL) {\n"
-                    << innerKernel.str() << "\
+            << innerKernel.str() << "\n\
         }\n";
-        subkernel << "}";
+        subkernel << " } ";
+        }
+//        subkernel << "}";
         result << subkernel.str();
     }
 
