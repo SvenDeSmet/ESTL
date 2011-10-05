@@ -48,6 +48,7 @@ bool TestFourierFloat::execute() {
             double GFlopsTotal = 1E-9*floatingOperations/timer.getAverageTime();
             double GFlopsComputation = (timerComputation.getRuns() > 0) ? 1E-9*floatingOperations/timerComputation.getAverageTime() : -1;
             printf(" %f GFlops/s (%f GFlops/s)\n", GFlopsTotal, GFlopsComputation);
+            fflush(stdout);
 
             delete fft;
         }

@@ -79,6 +79,34 @@ public:
     }
 };
 
+class Array {
+private:
+    streng name;
+    streng type;
+    int length;
+    bool inRegisters;
+public:
+    Array(streng iType, int iLength, bool iInRegisters, streng iName) : type(iType), length(iLength), inRegisters(iInRegisters), name(iName) { }
+
+    streng getDeclaration() {
+        streng result;
+        if (inRegisters) { result += type + streng(" ");
+            for (int l = 0; l < length; ++l) {
+                if (l > 0) result += ", ";
+                result += name + intToStr(l);
+            }
+        } else {
+            result = type + streng(" ") + name + streng("[") + intToStr(length) + streng("]");
+        }
+        return result + streng(";");
+    }
+
+    Value getItem(int ix) {
+        if (inRegisters) { return name + intToStr(ix); }
+        else { return name + streng("[") + intToStr(ix) + streng("]"); }
+    }
+};
+
 class KernelGenerator {
 public:
 static streng generateKernel(int kernelIx, int Aq, std::vector<int> BL, int LG, int NG, bool includeCommonDefs, bool preTwiddle = false) {
@@ -112,8 +140,7 @@ inline K unit(int n, int d) { const float PI = " << M_PI << "; return komplex(co
 inline K mul(const K a, const K b) { return komplex(a.r * b.r - a.i * b.i, a.r * b.i + a.i * b.r); };\n\
 inline K add(const K a, const K b) { return komplex(a.r + b.r, a.i + b.i); };\n";
     std::stringstream kernelhead; kernelhead << "__kernel void contiguousFFT_step" << kernelIx << "(__global K *in, __global K *out) {\n";
-    std::stringstream result; result << "\
-    int unitsIx = 0;\n";
+    std::stringstream result;
     int unitCount = 0;
     for (int qL = 1; qL <= kL; ++qL) { unitCount += NL[qL - 1]; }
     result << "\
@@ -123,34 +150,29 @@ inline K add(const K a, const K b) { return komplex(a.r + b.r, a.i + b.i); };\n"
     //phi*w + v;\n\
     const int butterflyCount = " << LG/LL << ";\n\
     int gG = j/" << LG/NG << ";\n\
-    int zG = j % " << LG/NG << ";\n\
-    K buff0[LL];\n\
-    K buff1[LL];\n\n";
+    int zG = j % " << LG/NG << ";\n";
 
+    Array buff0 = Array("K", LL, true, "buff0_");
+    Array buff1 = Array("K", LL, true, "buff1_");
+
+    result << buff0.getDeclaration() << "\n" << buff1.getDeclaration() << "\n";
     defines << "    const int fracLG_NG = " << LG/NG << ";\n";
     result << "  if (j < butterflyCount) {\n";
     // Load data
     std::stringstream subArrayReader; subArrayReader << "\
-    int readStartOffset = zG + fracLG_NG*"<< Bq << "*gG;\n\
-    for (int sG = 0; sG < " << Bq << "; ++sG) {\n";
-    if (!preTwiddle) { subArrayReader << "        buff0[sG] = in[readStartOffset + sG*fracLG_NG];\n"; }
-    else { subArrayReader << "      buff0[sG] = mul(in[readStartOffset + sG*fracLG_NG], unit(-(sG*gG), "<< NG << "));\n"; }
-    //else { subArrayReader << "   int r = (sG*gG) & 1;   buff0[sG] = /*in[readStartOffset + sG*fracLG_NG],*/ pretwiddles[r];\n"; }
-    subArrayReader << "\
-    }\n";
+    int readStartOffset = zG + fracLG_NG*"<< Bq << "*gG;\n";
+    for (int sG = 0; sG < Bq; ++sG) {
+        subArrayReader << buff0.getItem(sG).getRepresentation();
+        if (!preTwiddle) { subArrayReader << " = in[readStartOffset + " << sG*(LG/NG) << "];\n"; }
+        else { subArrayReader << " = mul(in[readStartOffset + " << sG*(LG/NG) << "], unit(-(" << sG << "*gG), "<< NG << "));\n"; }
+    }
     result << subArrayReader.str();
-/*    result << "\
-    int writeStartOffset = fracLG_NG*gG + zG;\n\
-    for (int h = 0; h < " << Bq << "; ++h) {\n";
-        result << "        out[writeStartOffset + h*" << Aq << "*fracLG_NG] = buff0[h];\n";
-        //komplex(" << buffIx[kL & 1] << "[h].r, " << buffIx[kL & 1] << "[h].i);\n
-    result << "    }/*";*/
 
     // Local FFT
-    streng buffIx[2] = { "buff0", "buff1" };
+    Array* buffs[2] = { &buff0, &buff1 };
     for (int qL = 1; qL <= kL; ++qL) {
-        streng source = buffIx[(qL ^ 1) & 1];
-        streng target = buffIx[qL & 1];
+        Array& source = *buffs[(qL ^ 1) & 1];
+        Array& target = *buffs[qL & 1];
 
         defines << "    const int AL" << qL << " = " << AL[qL - 1] << ";\n";
         defines << "    const int BL" << qL << " = " << BL[qL - 1] << ";\n";
@@ -158,51 +180,41 @@ inline K add(const K a, const K b) { return komplex(a.r + b.r, a.i + b.i); };\n"
 
         std::stringstream subkernel;
         for (int gL = 0; gL < AL[qL - 1]; ++gL) { subkernel << " { ";
-          //  for (int sL = 0; sL < BL[qL - 1]; ++sL) subkernel << "        const K u" << sL << " = "<< KomplexUnit(-gL*sL, NL[qL - 1]).toFloatString() << ";\n";
+            for (int zL = 0; zL < (LL/NL[qL - 1]); ++zL) { subkernel << " { ";
+                std::stringstream innerKernel;
+                for (int sL = 0; sL < BL[qL - 1]; ++sL) {
+                    innerKernel << "\
+                    const K s" << sL << " = ";
+                        innerKernel << KomplexConstMultiplication(KomplexUnit(-gL*sL, NL[qL - 1]),
+                                 source.getItem((LL/NL[qL - 1])*(BL[qL - 1] * gL + sL) + zL)).getRepresentation() << ";";
+                }
+                for (int hL = 0; hL < BL[qL - 1]; ++hL) {
+                    innerKernel << target.getItem((LL/NL[qL - 1])*(gL + AL[qL - 1]*hL) + zL).getRepresentation() << " = ";
+                    for (int sL = 0; sL < BL[qL - 1] - 1; ++sL) innerKernel << "add(";
+                    for (int sL = 0; sL < BL[qL - 1]; ++sL) {
+                        if (sL > 0) innerKernel << ", ";
+                        innerKernel << KomplexConstMultiplication(KomplexUnit(-hL*sL, BL[qL - 1]), streng("s") + intToStr(sL)).getRepresentation();
+                        if (sL > 0) innerKernel << ")";
+                    }
+                    innerKernel << ";\n";
+                }
 
-            std::stringstream innerKernel;
-        for (int sL = 0; sL < BL[qL - 1]; ++sL) {
-            innerKernel << "\
-            K s" << sL << " = ";
-            innerKernel << KomplexConstMultiplication(KomplexUnit(-gL*sL, NL[qL - 1]),
-                                 source + streng("[") + intToStr((LL/NL[qL - 1])*(BL[qL - 1] * gL + sL)) + streng(" + zL]")).getRepresentation() << ";";
-//            innerKernel << source << "[" << (LL/NL[qL - 1])*(BL[qL - 1] * gL + sL) << " + zL]);\n";
-//            /*if (sL > 0)*/ innerKernel << "mul(u" << sL << ", ";
-//            innerKernel << source << "[fracLL_NL" << qL << "*(BL" << qL << "*" << gL << " + " << sL << ") + zL]);\n";
-        }
-        for (int hL = 0; hL < BL[qL - 1]; ++hL) {
-            innerKernel << "\
-            " << target << "[fracLL_NL" << qL << "*(" << gL << " + AL" << qL << "*" << hL << ") + zL] = ";
-            for (int sL = 0; sL < BL[qL - 1] - 1; ++sL) innerKernel << "add(";
-            for (int sL = 0; sL < BL[qL - 1]; ++sL) {
-                if (sL > 0) innerKernel << ", ";
-                innerKernel << KomplexConstMultiplication(KomplexUnit(-hL*sL, BL[qL - 1]), streng("s") + intToStr(sL)).getRepresentation();
-                if (sL > 0) innerKernel << ")";
+                subkernel << innerKernel.str();
+                subkernel << " } ";
             }
-            innerKernel << ";\n";
+            subkernel << " } ";
         }
-
-        subkernel << "\
-        for (int zL = 0; zL < fracLL_NL" << qL << "; ++zL) {\n"
-            << innerKernel.str() << "\n\
-        }\n";
-        subkernel << " } ";
-        }
-//        subkernel << "}";
         result << subkernel.str();
     }
 
     // Write results
     std::stringstream subArrayWriter; subArrayWriter << "\n\
-    int writeStartOffset = fracLG_NG*gG + zG;\n\
-    for (int h = 0; h < " << Bq << "; ++h) {\n";
-        if (false) { subArrayWriter << "        out[writeStartOffset + h*" << Aq << "*fracLG_NG] = pretwiddles[h];;\n//" << buffIx[kL & 1] << "[h];\n"; }
-        else { subArrayWriter << "        out[writeStartOffset + h*" << Aq << "*fracLG_NG] = " << buffIx[kL & 1] << "[h];\n"; }
-        //komplex(" << buffIx[kL & 1] << "[h].r, " << buffIx[kL & 1] << "[h].i);\n
-    subArrayWriter << "    }\n";
+    int writeStartOffset = fracLG_NG*gG + zG;\n";
+    for (int h = 0; h < Bq; ++h) {
+        subArrayWriter << "        out[writeStartOffset + " << h*Aq*(LG/NG) << "] = " << buffs[kL & 1]->getItem(h).getRepresentation() << ";\n";
+    }
     result << subArrayWriter.str();
     result << "  }\n";
-
     result << "}";
 
     std::stringstream src;

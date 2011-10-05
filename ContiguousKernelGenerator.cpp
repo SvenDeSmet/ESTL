@@ -9,3 +9,4 @@ std::string intToStr(int i) { if (i == 0) return "0";
 }
 
 int mod(int a, int b) { return (a - b*(a/b)); }
+
