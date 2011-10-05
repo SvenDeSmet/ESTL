@@ -70,11 +70,11 @@ public:
                     return bRep;
                 } else if ((2*num == a.denominator) || (2*num == -a.denominator)) {
                     return streng("komplex(-") + bRep + streng(".r, -") + bRep + streng(".i)");
-                }/* else if ((4*num == a.denominator) || (4*num == -3*a.denominator)) {
+                } else if ((4*num == a.denominator) || (4*num == -3*a.denominator)) {
                     return streng("komplex(-") + bRep + streng(".i, ") + bRep + streng(".r)");
                 } else {
                     return streng("komplex(") + bRep + streng(".i, -") + bRep + streng(".r)");
-                }*/ else return streng("mul(") + a.getRepresentation() + streng(", ") + b.getRepresentation() + streng(")");
+                }// else return streng("mul(") + a.getRepresentation() + streng(", ") + b.getRepresentation() + streng(")");
             } else return streng("mul(") + a.getRepresentation() + streng(", ") + b.getRepresentation() + streng(")");
     }
 };
@@ -136,13 +136,11 @@ inline K unit(int n, int d);\n\
 inline K mul(const K a, const K b);\n\
 inline K add(const K a, const K b);\n\
 inline K komplex(T iR, T iI) { K k; k.r = iR; k.i = iI; return k; };\n\
-inline K unit(int n, int d) { const float PI = " << M_PI << "; return komplex(cos((2*PI*n)/d), sin((2*PI*n)/d)); };\n\
+inline K unit(int n, int d) { const float frac_PI2_d = " << (float) (2*M_PI) << "/d; return komplex(native_cos(frac_PI2_d*n), native_sin(frac_PI2_d*n)); };\n\
 inline K mul(const K a, const K b) { return komplex(a.r * b.r - a.i * b.i, a.r * b.i + a.i * b.r); };\n\
 inline K add(const K a, const K b) { return komplex(a.r + b.r, a.i + b.i); };\n";
     std::stringstream kernelhead; kernelhead << "__kernel void contiguousFFT_step" << kernelIx << "(__global K *in, __global K *out) {\n";
     std::stringstream result;
-    int unitCount = 0;
-    for (int qL = 1; qL <= kL; ++qL) { unitCount += NL[qL - 1]; }
     result << "\
 //    int v = get_local_id(0); \n\
 //    int w = get_group_id(0); \n\
@@ -152,8 +150,8 @@ inline K add(const K a, const K b) { return komplex(a.r + b.r, a.i + b.i); };\n"
     int gG = j/" << LG/NG << ";\n\
     int zG = j % " << LG/NG << ";\n";
 
-    Array buff0 = Array("K", LL, true, "buff0_");
-    Array buff1 = Array("K", LL, true, "buff1_");
+    Array buff0 = Array("K", LL, false, "buff0_");
+    Array buff1 = Array("K", LL, false, "buff1_");
 
     result << buff0.getDeclaration() << "\n" << buff1.getDeclaration() << "\n";
     defines << "    const int fracLG_NG = " << LG/NG << ";\n";
@@ -164,7 +162,7 @@ inline K add(const K a, const K b) { return komplex(a.r + b.r, a.i + b.i); };\n"
     for (int sG = 0; sG < Bq; ++sG) {
         subArrayReader << buff0.getItem(sG).getRepresentation();
         if (!preTwiddle) { subArrayReader << " = in[readStartOffset + " << sG*(LG/NG) << "];\n"; }
-        else { subArrayReader << " = mul(in[readStartOffset + " << sG*(LG/NG) << "], unit(-(" << sG << "*gG), "<< NG << "));\n"; }
+        else { subArrayReader << " = mul(in[readStartOffset + " << sG*(LG/NG) << "], unit(-(" << sG << "*gG), "<< NG << ")" << ");\n"; }
     }
     result << subArrayReader.str();
 
@@ -174,9 +172,9 @@ inline K add(const K a, const K b) { return komplex(a.r + b.r, a.i + b.i); };\n"
         Array& source = *buffs[(qL ^ 1) & 1];
         Array& target = *buffs[qL & 1];
 
-        defines << "    const int AL" << qL << " = " << AL[qL - 1] << ";\n";
-        defines << "    const int BL" << qL << " = " << BL[qL - 1] << ";\n";
-        defines << "    const int fracLL_NL" << qL << " = " << (LL/NL[qL - 1]) << ";\n";
+//        defines << "    const int AL" << qL << " = " << AL[qL - 1] << ";\n";
+//        defines << "    const int BL" << qL << " = " << BL[qL - 1] << ";\n";
+//        defines << "    const int fracLL_NL" << qL << " = " << (LL/NL[qL - 1]) << ";\n";
 
         std::stringstream subkernel;
         for (int gL = 0; gL < AL[qL - 1]; ++gL) { subkernel << " { ";

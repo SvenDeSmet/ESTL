@@ -161,13 +161,15 @@ public:
             for (int qG = 1; qG <= kernels.size(); ++qG) { cl::Kernel* kernel = kernels[qG - 1]; //printf("kernel q = %i", qG);
                 size_t workGroupSize;
                 kernel->getWorkGroupInfo<size_t>(devicesToUse[0], CL_KERNEL_WORK_GROUP_SIZE, &workGroupSize);
-//        printf("workGroupSize = %i", workGroupSize);
+      //  printf("[workGroupSize = %i]", workGroupSize);
 
                 int butterflyCount = this->size/BGs[qG - 1];
                 int s = this->size/BGs[qG - 1];
-                int wGS2 = 1;
-                while (2*wGS2 <= workGroupSize) wGS2 *= 2;
-                int localSize = (s > wGS2) ? wGS2 : s;
+ //               int wGS2 = 1;
+ //               while (2*wGS2 <= workGroupSize) wGS2 *= 2;
+ //               int localSize = (s > wGS2) ? wGS2 : s;
+                int localSize = (s > workGroupSize) ? workGroupSize : s;
+                butterflyCount = localSize*((butterflyCount + (localSize - 1))/localSize);
 
                 //printf("wgs = %i --- size = %i -- s = %i -- localSize == %i -- butterFlyCount = %i", workGroupSize, this->size, s, localSize, butterflyCount);
                 cl::KernelFunctor func = kernel->bind(*commandQueue, cl::NDRange(butterflyCount), cl::NDRange(localSize));
