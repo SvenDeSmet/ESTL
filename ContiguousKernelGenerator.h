@@ -10,13 +10,35 @@
 #ifndef CONTIGUOUSKERNELGENERATOR_H
 #define CONTIGUOUSKERNELGENERATOR_H
 
+#include <string>
+#include <sstream>
+#include "math.h"
+#include <vector>
+
 typedef std::string streng;
 
-class KomplexUnit {
+std::string intToStr(int i); /*{
+    char p[(int) (ceil(log(i)/log(10)) + 2)];
+    sprintf(p, "%i", i);
+    return p;
+}*/
+
+class Value {
 private:
-    int numerator, denominator;
+    streng representation;
+public:
+    Value(streng iRepresentation) : representation(iRepresentation) { }
+    Value() { }
+
+    virtual streng getRepresentation() { return representation; }
+};
+
+class KomplexUnit : public Value {
+private:
     bool negative;
 public:
+    int numerator, denominator;
+
     KomplexUnit(int iNumerator, int iDenominator, bool iNegative = true) : numerator(iNumerator), denominator(iDenominator), negative(iNegative) { }
     streng toFloatString() {
         //double alpha = (negative ? -1 : 1)*2*M_PI*(((double) numerator)/denominator);
@@ -24,6 +46,36 @@ public:
 //        result << streng("unit(") << numerator << ", " << denominator << ")";
         result << streng("komplex(") << cos((2*M_PI*numerator)/denominator) << ", " << sin((2*M_PI*numerator)/denominator) << ")";
         return result.str();
+    }
+
+    virtual streng getRepresentation() { return toFloatString(); }
+};
+
+int mod(int a, int b); //{ return (a - b*(a/b)); }
+
+class KomplexConstMultiplication : public Value {
+private:
+    KomplexUnit a;
+    Value b;
+public:
+    KomplexConstMultiplication(KomplexUnit iA, Value iB) : a(iA), b(iB) { }
+
+    virtual streng getRepresentation() {
+            // Simple complex numbers too multiply:
+            // 1 + 0 i --- 0 + 1 i --- -1 + 0 i --- 0 - 1 i
+            streng bRep = b.getRepresentation();
+            int num = mod(a.numerator, a.denominator);
+            if (mod(4*num, a.denominator) == 0) {
+                if (num == 0) {
+                    return bRep;
+                } else if ((2*num == a.denominator) || (2*num == -a.denominator)) {
+                    return streng("komplex(-") + bRep + streng(".r, -") + bRep + streng(".i)");
+                }/* else if ((4*num == a.denominator) || (4*num == -3*a.denominator)) {
+                    return streng("komplex(-") + bRep + streng(".i, ") + bRep + streng(".r)");
+                } else {
+                    return streng("komplex(") + bRep + streng(".i, -") + bRep + streng(".r)");
+                }*/ else return streng("mul(") + a.getRepresentation() + streng(", ") + b.getRepresentation() + streng(")");
+            } else return streng("mul(") + a.getRepresentation() + streng(", ") + b.getRepresentation() + streng(")");
     }
 };
 
@@ -67,7 +119,6 @@ inline K add(const K a, const K b) { return komplex(a.r + b.r, a.i + b.i); };\n"
     result << "\
 //    int v = get_local_id(0); \n\
 //    int w = get_group_id(0); \n\
-    //int globalID = get_global_id(0); \n\
     int j = get_global_id(0);\n\
     //phi*w + v;\n\
     const int butterflyCount = " << LG/LL << ";\n\
@@ -107,20 +158,28 @@ inline K add(const K a, const K b) { return komplex(a.r + b.r, a.i + b.i); };\n"
 
         std::stringstream subkernel;
         for (int gL = 0; gL < AL[qL - 1]; ++gL) { subkernel << " { ";
-            for (int sL = 0; sL < BL[qL - 1]; ++sL) subkernel << "        K u" << sL << " = "<< KomplexUnit(-gL*sL, NL[qL - 1]).toFloatString() << ";\n";
+          //  for (int sL = 0; sL < BL[qL - 1]; ++sL) subkernel << "        const K u" << sL << " = "<< KomplexUnit(-gL*sL, NL[qL - 1]).toFloatString() << ";\n";
 
             std::stringstream innerKernel;
         for (int sL = 0; sL < BL[qL - 1]; ++sL) {
             innerKernel << "\
             K s" << sL << " = ";
-            /*if (sL > 0)*/ innerKernel << "mul(u" << sL << ", ";
-            innerKernel << source << "[fracLL_NL" << qL << "*(BL" << qL << "*" << gL << " + " << sL << ") + zL]);\n";
+            innerKernel << KomplexConstMultiplication(KomplexUnit(-gL*sL, NL[qL - 1]),
+                                 source + streng("[") + intToStr((LL/NL[qL - 1])*(BL[qL - 1] * gL + sL)) + streng(" + zL]")).getRepresentation() << ";";
+//            innerKernel << source << "[" << (LL/NL[qL - 1])*(BL[qL - 1] * gL + sL) << " + zL]);\n";
+//            /*if (sL > 0)*/ innerKernel << "mul(u" << sL << ", ";
+//            innerKernel << source << "[fracLL_NL" << qL << "*(BL" << qL << "*" << gL << " + " << sL << ") + zL]);\n";
         }
         for (int hL = 0; hL < BL[qL - 1]; ++hL) {
             innerKernel << "\
             " << target << "[fracLL_NL" << qL << "*(" << gL << " + AL" << qL << "*" << hL << ") + zL] = ";
             for (int sL = 0; sL < BL[qL - 1] - 1; ++sL) innerKernel << "add(";
-            for (int sL = 0; sL < BL[qL - 1]; ++sL) { if (sL > 0) innerKernel << ", "; innerKernel << "mul(s" << sL << ", " << KomplexUnit(-hL*sL, BL[qL - 1]).toFloatString() << ")"; if (sL > 0) innerKernel << ");\n"; }
+            for (int sL = 0; sL < BL[qL - 1]; ++sL) {
+                if (sL > 0) innerKernel << ", ";
+                innerKernel << KomplexConstMultiplication(KomplexUnit(-hL*sL, BL[qL - 1]), streng("s") + intToStr(sL)).getRepresentation();
+                if (sL > 0) innerKernel << ")";
+            }
+            innerKernel << ";\n";
         }
 
         subkernel << "\

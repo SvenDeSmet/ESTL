@@ -6,12 +6,11 @@
 #include "Timer.h"
 
 #include <math.h>
+#include "assert.h"
 
 #define MAX_ERR 1E-1
-#define ASSERT_APPROX_EQ_C(a, b) true
-//QVERIFY((a - b).getNormSquared() < MAX_ERR)
-#define ASSERT_APPROX_EQ(a, b) true
-//QVERIFY(abs(a - b) < MAX_ERR)
+#define ASSERT_APPROX_EQ_C(a, b) assert((a - b).getNormSquared() < MAX_ERR)
+#define ASSERT_APPROX_EQ(a, b) assert(abs(a - b) < MAX_ERR)
 
 
 bool TestFourierFloat::execute() {

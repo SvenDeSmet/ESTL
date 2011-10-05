@@ -31,10 +31,12 @@ SOURCES += \
     OpenCL_FFT/fft_execute.cpp \
     tests/Timer.cpp \
     tests/Test.cpp \
-    main.cpp
+    main.cpp \
+    ContiguousKernelGenerator.cpp
 
 
 LIBS += -lfftw3f -framework OpenCL
+
 
 
 
