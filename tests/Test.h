@@ -19,6 +19,6 @@ public:
     bool execute();
 };
 
-int performTests();
+bool performTests();
 
 #endif /* TEST_H_ */

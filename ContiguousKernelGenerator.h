@@ -5,6 +5,21 @@
  * GNU Lesser General Public License Version 2.1
  * The license text is available from
  * http://www.gnu.org/licenses/lgpl.html
+ *
+ * Disclaimer: IMPORTANT:
+ *
+ * The Software is provided on an "AS IS" basis.  Sven De Smet MAKES NO WARRANTIES,
+ * EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION THE IMPLIED WARRANTIES OF
+ * NON - INFRINGEMENT, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE,
+ * REGARDING THE SOFTWARE OR ITS USE AND OPERATION ALONE OR IN COMBINATION WITH YOUR PRODUCTS.
+ *
+ * IN NO EVENT SHALL Sven De Smet BE LIABLE FOR ANY SPECIAL, INDIRECT, INCIDENTAL OR
+ * CONSEQUENTIAL DAMAGES ( INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION ) ARISING IN ANY WAY OUT OF THE USE, REPRODUCTION, MODIFICATION
+ * AND / OR DISTRIBUTION OF THE SOFTWARE, HOWEVER CAUSED AND WHETHER
+ * UNDER THEORY OF CONTRACT, TORT ( INCLUDING NEGLIGENCE ), STRICT LIABILITY OR
+ * OTHERWISE, EVEN IF Sven De Smet HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #ifndef CONTIGUOUSKERNELGENERATOR_H
@@ -61,11 +76,11 @@ public:
     KomplexConstMultiplication(KomplexUnit iA, Value iB) : a(iA), b(iB) { }
 
     virtual streng getRepresentation() {
-            // Simple complex numbers too multiply:
-            // 1 + 0 i --- 0 + 1 i --- -1 + 0 i --- 0 - 1 i
+            // Simple complex numbers to multiply:
+
             streng bRep = b.getRepresentation();
             int num = mod(a.numerator, a.denominator);
-            if (mod(4*num, a.denominator) == 0) {
+            if (mod(4*num, a.denominator) == 0) { // 1 + 0 i --- 0 + 1 i --- -1 + 0 i --- 0 - 1 i
                 if (num == 0) {
                     return bRep;
                 } else if ((2*num == a.denominator) || (2*num == -a.denominator)) {
@@ -160,9 +175,11 @@ inline K add(const K a, const K b) { return komplex(a.r + b.r, a.i + b.i); };\n"
     std::stringstream subArrayReader; subArrayReader << "\
     int readStartOffset = zG + fracLG_NG*"<< Bq << "*gG;\n";
     for (int sG = 0; sG < Bq; ++sG) {
-        subArrayReader << buff0.getItem(sG).getRepresentation();
-        if (!preTwiddle) { subArrayReader << " = in[readStartOffset + " << sG*(LG/NG) << "];\n"; }
-        else { subArrayReader << " = mul(in[readStartOffset + " << sG*(LG/NG) << "], unit(-(" << sG << "*gG), "<< NG << ")" << ");\n"; }
+        subArrayReader << buff0.getItem(sG).getRepresentation() << " = in[readStartOffset + " << sG*(LG/NG) << "];\n";
+    }
+    if (preTwiddle) for (int sG = 0; sG < Bq; ++sG) {
+        subArrayReader << buff0.getItem(sG).getRepresentation()
+        << " = mul(" << buff0.getItem(sG).getRepresentation() << ", unit(-(" << sG << "*gG), "<< NG << ")" << ");\n";
     }
     result << subArrayReader.str();
 

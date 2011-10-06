@@ -60,8 +60,7 @@ public:
             xCLErr(platforms[p].getDevices(CL_DEVICE_TYPE_GPU, &devices));
        //     qDe bug("%i devices", (int) devices.size());
             for (int d = 0; d < (int) devices.size(); ++d) { CLDevice device = CLDevice(devices[d]);
-                printf("[Device: %s, ", device.name().c_str());
-                printf("Vendor: %s]", device.vendor().c_str());
+                printf("[Device: %s, Vendor: %s]", device.name().c_str(), device.vendor().c_str());
 
   /*              printf("-- Device name: %s --", device.name().c_str());
                 printf("Vendor: %s", device.vendor().c_str());

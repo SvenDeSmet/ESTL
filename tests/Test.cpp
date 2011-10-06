@@ -41,7 +41,7 @@ bool TestFourierFloat::execute() {
     typedef Complex<D> C;
 
     for (int f = 0; f < fftFactories.size(); ++f) {
-        for (int m = 2; m < 22; m++) { int M = 1 << m; //qDebug("%i", m);
+        for (int m = 1; m < 22; m++) { int M = 1 << m; //qDebug("%i", m);
             printf("@@@ m == %i: ", m);
             FFT<D>* fft = fftFactories[f]->newFFT(M);
             Timer timer, timerComputation;
@@ -78,30 +78,22 @@ bool TestFourierFloat::execute() {
     return true;
 }
 
-
-int performTests() {
+bool performTests() {
     bool result = true;
 
-//            printf("Starting tests");  fflush(stdout);
+            printf("Starting tests");  fflush(stdout);
 
     typedef float T;
     std::vector<FFTFactory<T> *> factories;
    // factories.push_back(new FFTFactorySpecific<FFT_OpenCL_Contiguous_InnerKernelTester<T> >());
    // factories.push_back(new FFTFactorySpecific<FFT_FFTW3<T> >());
     factories.push_back(new FFTFactorySpecific<FFT_OpenCL_Contiguous<T> >());
-    factories.push_back(new FFTFactorySpecific<FFT_OpenCL_A<T> >());
-
-        //    printf("Created factories"); fflush(stdout);
-
+   // factories.push_back(new FFTFactorySpecific<FFT_OpenCL_A<T> >());
 
     TestFourierFloat* test = new TestFourierFloat(factories);
-    try {
-        result = result && test->execute();
-    } catch (TestFailureException& e) {
-        printf(e.what());
-    } catch (std::exception& e) {
-        printf("Unknown exception (%s)", e.what());
-    }
+    try { result = result && test->execute(); }
+    catch (TestFailureException& e) { printf(e.what()); }
+    catch (std::exception& e) { printf("Unknown exception (%s)", e.what()); }
 
     delete test;
 
