@@ -76,14 +76,14 @@ public:
             }
         }
 
-     //   printf("Creating context..."); fflush(stdout);
+  //      printf("Creating context..."); fflush(stdout);
 
         cl_int err;
         context = new cl::Context::Context(devicesToUse, NULL, NULL, NULL, &err);
         xCLErr(err);
 
 //printf("Creating command queue..."); fflush(stdout);
-        commandQueue = new cl::CommandQueue::CommandQueue(*context, devicesToUse[0], 0, &err);
+        commandQueue = new cl::CommandQueue::CommandQueue(*context, devicesToUse[0], CL_QUEUE_PROFILING_ENABLE, &err);
         xCLErr(err);
 
         int memReq = this->size*sizeof(clFFT_Complex)*this->batchCount;
@@ -92,7 +92,7 @@ public:
         for (int d = 0; d < 2; ++d) data[d] = new ComplexArrayCL<float>(*context, this->batchCount*this->size, false);
 
         if (this->size > 1) {
-            int BG = 16;
+            int BG = 32;
             int logBGSize = 0;
             for (int a = 1; a < this->size; a *= BG) logBGSize++;
             int AG = 1;
@@ -146,23 +146,25 @@ public:
 
             for (int qG = 1; qG <= logBGSize; ++qG) {
                 std::stringstream kernelName; kernelName << "contiguousFFT_step" << qG;
+                //printf("kernel %i", qG); fflush(stdout);
                 kernels.push_back(new cl::Kernel(*program, kernelName.str().c_str(), &err));
                 xCLErr(err);
             }
         }
 
-        printf("Initialization complete"); fflush(stdout);
+//        printf("Initialization complete"); fflush(stdout);
     }
 
-    virtual void execute() {// printf("Starting execution with %i kernels", (int) kernels.size()); fflush(stdout);
+    virtual void execute() { //printf("Starting execution with %i kernels", (int) kernels.size()); fflush(stdout);
         if (this->size == 1) {
             for (int q = 0; q < this->size; ++q) this->out->setElement(q, this->in->getElement(q));
         } else { if (kernels.size() > 0) {
+            //printf("Kernels available..."); fflush(stdout);
 //            for (int q = 0; q < this->size; ++q) this->out->setElement(q, 888);
 //            data[1]->enqueueWriteArray(*commandQueue, *this->out);
             data[0]->enqueueWriteArray(*commandQueue, *this->in);
 
-            if (timerComputation) timerComputation->resume();
+            std::vector<cl::Event> kernelEvents;
             for (int qG = 1; qG <= kernels.size(); ++qG) { cl::Kernel* kernel = kernels[qG - 1]; //printf("kernel q = %i", qG);
                 size_t workGroupSize;
                 kernel->getWorkGroupInfo<size_t>(devicesToUse[0], CL_KERNEL_WORK_GROUP_SIZE, &workGroupSize);
@@ -186,7 +188,7 @@ public:
             printf("1 qG = %i", qG);
             for (int q = 0; q < this->size; ++q) this->in->getElement(q).print();
 */
-                try { cl::Event e = func(); if (qG == kernels.size()) e.wait(); } // enqueue kernel
+                try { kernelEvents.push_back(func()); } // enqueue kernel
                 catch (cl::Error e) { printf("CL Exception"); CLException cle = CLException(e); cle.handle(); fflush(stdout); }
                 catch (...) { printf("Unknown exception"); fflush(stdout); }
 
@@ -203,12 +205,20 @@ public:
 //                printf("workGroupSize = %i", workGroupSize);
               //  if (qG == kernels.size()) e.wait();
             }
+
+
+//            printf("Computation ends..."); fflush(stdout);
 //                     sleep(3000);
 //        if (this->size != 4) {
   //      }
  //   xCLErr(clFinish((*commandQueue)()));
-            if (timerComputation) timerComputation->suspend();
             data[kernels.size() & 1]->enqueueReadArray(*commandQueue, *this->out);
+
+            cl_ulong start, end;
+            clGetEventProfilingInfo(kernelEvents[kernels.size() - 1](), CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &end, NULL);
+            clGetEventProfilingInfo(kernelEvents[0](), CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &start, NULL);
+            double executionTimeInSeconds = (end - start) * 1.0e-9f;
+            if (timerComputation) timerComputation->addRun(executionTimeInSeconds);
 //            printf("out");
 //            for (int q = 0; q < this->size; ++q) this->out->getElement(q).print();
 //            data[(kernels.size() & 1) ^ 1]->enqueueReadArray(*commandQueue, *this->in);
@@ -218,7 +228,7 @@ public:
         } }
     }
 
-    ~FFT_OpenCL_Contiguous() {
+    virtual ~FFT_OpenCL_Contiguous() {
         for (int d = 0; d < 2; ++d) delete data[d];
         for (int k = 0; k < (int) kernels.size(); ++k) delete kernels[k];
         delete source;

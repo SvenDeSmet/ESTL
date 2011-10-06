@@ -38,7 +38,12 @@ std::string intToStr(int i); /*{
     return p;
 }*/
 
-class Value {
+class Expression {
+public:
+    virtual streng getRepresentation() = 0;
+};
+
+class Value : public Expression {
 private:
     streng representation;
 public:
@@ -48,7 +53,7 @@ public:
     virtual streng getRepresentation() { return representation; }
 };
 
-class KomplexUnit : public Value {
+class KomplexUnit : public Expression {
 private:
     bool negative;
 public:
@@ -68,7 +73,7 @@ public:
 
 int mod(int a, int b); //{ return (a - b*(a/b)); }
 
-class KomplexConstMultiplication : public Value {
+class KomplexConstMultiplication : public Expression {
 private:
     KomplexUnit a;
     Value b;
@@ -76,8 +81,6 @@ public:
     KomplexConstMultiplication(KomplexUnit iA, Value iB) : a(iA), b(iB) { }
 
     virtual streng getRepresentation() {
-            // Simple complex numbers to multiply:
-
             streng bRep = b.getRepresentation();
             int num = mod(a.numerator, a.denominator);
             if (mod(4*num, a.denominator) == 0) { // 1 + 0 i --- 0 + 1 i --- -1 + 0 i --- 0 - 1 i
@@ -169,11 +172,11 @@ inline K add(const K a, const K b) { return komplex(a.r + b.r, a.i + b.i); };\n"
     Array buff1 = Array("K", LL, true, "buff1_");
 
     result << buff0.getDeclaration() << "\n" << buff1.getDeclaration() << "\n";
-    defines << "    const int fracLG_NG = " << LG/NG << ";\n";
+   // defines << "    const int fracLG_NG = " << LG/NG << ";\n";
     result << "  if (j < butterflyCount) {\n";
     // Load data
     std::stringstream subArrayReader; subArrayReader << "\
-    int readStartOffset = zG + fracLG_NG*"<< Bq << "*gG;\n";
+    int readStartOffset = zG + "<< (LG/NG) * Bq << "*gG;\n";
     for (int sG = 0; sG < Bq; ++sG) {
         subArrayReader << buff0.getItem(sG).getRepresentation() << " = in[readStartOffset + " << sG*(LG/NG) << "];\n";
     }
@@ -220,7 +223,7 @@ inline K add(const K a, const K b) { return komplex(a.r + b.r, a.i + b.i); };\n"
 
     // Write results
     std::stringstream subArrayWriter; subArrayWriter << "\n\
-    int writeStartOffset = fracLG_NG*gG + zG;\n";
+    int writeStartOffset = " << LG/NG << "*gG + zG;\n";
     for (int h = 0; h < Bq; ++h) {
         subArrayWriter << "        out[writeStartOffset + " << h*Aq*(LG/NG) << "] = " << buffs[kL & 1]->getItem(h).getRepresentation() << ";\n";
     }

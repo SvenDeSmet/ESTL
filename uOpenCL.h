@@ -186,21 +186,21 @@ public:
     cl_mem getImaginaries() { return imaginaries; }
     cl_mem getData() { return data; }
 
-    void enqueueReadArray(cl::CommandQueue& queue, ComplexArray<D>& a) {
+    void enqueueReadArray(cl::CommandQueue& queue, ComplexArray<D>& a, bool blocking = true) {
         if (planar) {
-            xCLErr(clEnqueueReadBuffer(queue(), reals, CL_TRUE, 0, size*sizeof(D), a.getReals(), 0, NULL, NULL));
-            xCLErr(clEnqueueReadBuffer(queue(), imaginaries, CL_TRUE, 0, size*sizeof(D), a.getImaginaries(), 0, NULL, NULL));
+            xCLErr(clEnqueueReadBuffer(queue(), reals, blocking ? CL_TRUE : CL_FALSE, 0, size*sizeof(D), a.getReals(), 0, NULL, NULL));
+            xCLErr(clEnqueueReadBuffer(queue(), imaginaries, blocking ? CL_TRUE : CL_FALSE, 0, size*sizeof(D), a.getImaginaries(), 0, NULL, NULL));
         } else {
-            xCLErr(clEnqueueReadBuffer(queue(), data, CL_TRUE, 0, 2*size*sizeof(D), a.getData(), 0, NULL, NULL));
+            xCLErr(clEnqueueReadBuffer(queue(), data, blocking ? CL_TRUE : CL_FALSE, 0, 2*size*sizeof(D), a.getData(), 0, NULL, NULL));
         }
     }
 
-    void enqueueWriteArray(cl::CommandQueue& queue, ComplexArray<D>& a) {
+    void enqueueWriteArray(cl::CommandQueue& queue, ComplexArray<D>& a, bool blocking = false) {
         if (planar) {
-            xCLErr(clEnqueueWriteBuffer(queue(), reals, CL_TRUE, 0, size*sizeof(D), a.getReals(), 0, NULL, NULL));
-            xCLErr(clEnqueueWriteBuffer(queue(), imaginaries, CL_TRUE, 0, size*sizeof(D), a.getImaginaries(), 0, NULL, NULL));
+            xCLErr(clEnqueueWriteBuffer(queue(), reals, blocking ? CL_TRUE : CL_FALSE, 0, size*sizeof(D), a.getReals(), 0, NULL, NULL));
+            xCLErr(clEnqueueWriteBuffer(queue(), imaginaries, blocking ? CL_TRUE : CL_FALSE, 0, size*sizeof(D), a.getImaginaries(), 0, NULL, NULL));
         } else {
-            xCLErr(clEnqueueWriteBuffer(queue(), data, CL_TRUE, 0, 2*size*sizeof(D), a.getData(), 0, NULL, NULL));
+            xCLErr(clEnqueueWriteBuffer(queue(), data, blocking ? CL_TRUE : CL_FALSE, 0, 2*size*sizeof(D), a.getData(), 0, NULL, NULL));
         }
     }
 

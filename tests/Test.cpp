@@ -41,14 +41,14 @@ bool TestFourierFloat::execute() {
     typedef Complex<D> C;
 
     for (int f = 0; f < fftFactories.size(); ++f) {
-        for (int m = 1; m < 22; m++) { int M = 1 << m; //qDebug("%i", m);
+        for (int m = 17; m < 21; m++) { int M = 1 << m; //qDebug("%i", m);
             printf("@@@ m == %i: ", m);
             FFT<D>* fft = fftFactories[f]->newFFT(M);
             Timer timer, timerComputation;
 
             if (FFT_OpenCL_Contiguous<D>* fft_opencl = dynamic_cast<FFT_OpenCL_Contiguous<D>*>(fft)) { fft_opencl->timerComputation = &timerComputation; }
 
-            int maxComps = (4096*1024*8)/(1 << m);
+            int maxComps = (4096*8)/(1 << m);
             if (maxComps == 0) maxComps = 1;
 
             for (int k = 0; (2*k < M) && (k < maxComps); k++) {// qDebug("k == %i ** (M = %i) ***********", k, M);

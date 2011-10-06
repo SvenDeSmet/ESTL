@@ -32,7 +32,9 @@ public:
     Timer() : totalTime(0), lastStartTime(0), started(false), runs(0) { }
 
     void resume() { lastStartTime = mach_absolute_time(); started = true; }
-    void suspend() { totalTime += subtractTimes(mach_absolute_time(), lastStartTime); started = false; runs++; }
+    void suspend() { addRun(subtractTimes(mach_absolute_time(), lastStartTime)); started = false; }
+
+    void addRun(double runTime) { totalTime += runTime; runs++; }
 
     double getTotalTime() { return totalTime; }
     double getAverageTime() { return totalTime/runs; }
