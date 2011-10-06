@@ -65,7 +65,7 @@ bool TestFourierFloat::execute() {
     typedef Complex<D> C;
 
     for (int f = 0; f < fftFactories.size(); ++f) {
-        for (int m = 16; m < 22; m++) { int M = 1 << m; //qDebug("%i", m);
+        for (int m = 1; m < 24; m++) { int M = 1 << m; //qDebug("%i", m);
             printf("@@@ m == %i: ", m);
             FFT<D>* fft = fftFactories[f]->newFFT(M);
             Timer timer, timerComputation;
@@ -109,7 +109,7 @@ bool performTests() {
     typedef float T;
     std::vector<FFTFactory<T> *> factories;
    // factories.push_back(new FFTFactorySpecific<FFT_OpenCL_Contiguous_InnerKernelTester<T> >());
-    factories.push_back(new FFTFactorySpecific<FFT_FFTW3<T> >());
+    //factories.push_back(new FFTFactorySpecific<FFT_FFTW3<T> >());
     factories.push_back(new FFTFactorySpecific<FFT_OpenCL_Contiguous<T> >());
     factories.push_back(new FFTFactorySpecific<FFT_OpenCL_A<T, clFFT_InterleavedComplexFormat> >());
     factories.push_back(new FFTFactorySpecific<FFT_OpenCL_A<T, clFFT_SplitComplexFormat> >());
