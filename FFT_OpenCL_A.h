@@ -1,11 +1,27 @@
 /*
  * The information in this file is
- * Copyright (C) 2010-2011, Sven De Smet <sven@cubiccarrot.com>
+ * Copyright (C) 2011, Sven De Smet <sven@cubiccarrot.com>
  * and is subject to the terms and conditions of the
  * GNU Lesser General Public License Version 2.1
  * The license text is available from
  * http://www.gnu.org/licenses/lgpl.html
+ *
+ * Disclaimer: IMPORTANT:
+ *
+ * The Software is provided on an "AS IS" basis.  Sven De Smet MAKES NO WARRANTIES,
+ * EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION THE IMPLIED WARRANTIES OF
+ * NON - INFRINGEMENT, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE,
+ * REGARDING THE SOFTWARE OR ITS USE AND OPERATION ALONE OR IN COMBINATION WITH YOUR PRODUCTS.
+ *
+ * IN NO EVENT SHALL Sven De Smet BE LIABLE FOR ANY SPECIAL, INDIRECT, INCIDENTAL OR
+ * CONSEQUENTIAL DAMAGES ( INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION ) ARISING IN ANY WAY OUT OF THE USE, REPRODUCTION, MODIFICATION
+ * AND / OR DISTRIBUTION OF THE SOFTWARE, HOWEVER CAUSED AND WHETHER
+ * UNDER THEORY OF CONTRACT, TORT ( INCLUDING NEGLIGENCE ), STRICT LIABILITY OR
+ * OTHERWISE, EVEN IF Sven De Smet HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 
 #ifndef FFT_OPENCL_APL_H
 #define FFT_OPENCL_APL_H
@@ -30,7 +46,7 @@ typedef struct {
         double *imag;
 } clFFT_SplitComplexDouble;
 
-template <class D> class FFT_OpenCL_A : public FFT<D> {
+template <class D, clFFT_DataFormat DataFormat> class FFT_OpenCL_A : public FFT<D> {
 private:
     clFFT_Plan plan;
     ComplexArrayCL<D>* data_in;
@@ -38,12 +54,13 @@ private:
     cl::Context* context;
     bool forward;
     cl::CommandQueue* commandQueue;
+     SplitInterleavedDataInterface<D>* splitInterleavedDataInterface;
+     clFFT_DataFormat dataFormat;
 public:
     FFT_OpenCL_A(int iSize, bool iForward = true, int iBatchCount = 1) : FFT<D>(iSize, iBatchCount), forward(iForward), context(NULL), commandQueue(NULL) {
-        clFFT_DataFormat dataFormat = clFFT_SplitComplexFormat;
+        dataFormat = DataFormat;
         bool planar = (dataFormat == clFFT_SplitComplexFormat);
-        this->in = new ComplexArray<D>(this->batchCount*this->size, planar);
-        this->out = new ComplexArray<D>(this->batchCount*this->size, planar);
+        this->dataInterface = splitInterleavedDataInterface = new SplitInterleavedDataInterface<D>(this->batchCount*this->size, planar);
 
         std::vector<cl::Platform> platforms;
         xCLErr(cl::Platform::get(&platforms));
@@ -104,26 +121,22 @@ public:
         //err = runTest(n, batchSize, dir, dim, dataFormat, numIter, testType);
         //data = new ComplexArray<float>(length);
 
-        data_in = new ComplexArrayCL<float>(*context, this->batchCount*this->size, planar);
-        data_out = (testType == clFFT_OUT_OF_PLACE) ? new ComplexArrayCL<float>(*context, this->batchCount*this->size, planar) : data_in;
+        data_in = new ComplexArrayCL<float>(*context, splitInterleavedDataInterface->in);
+        data_out = (testType == clFFT_OUT_OF_PLACE) ? new ComplexArrayCL<float>(*context, splitInterleavedDataInterface->out) : data_in;
     }
 
     virtual void execute() {
         clFFT_Direction dir = forward ? clFFT_Forward : clFFT_Inverse;
 
-        if (this->size == 1) {
-            for (int q = 0; q < this->size; ++q) this->out->setElement(q, this->in->getElement(q));
-        } else {
-            data_in->enqueueWriteArray(*commandQueue, *this->in);
+        if (this->size == 1) { splitInterleavedDataInterface->out->setElement(0, splitInterleavedDataInterface->in->getElement(0)); }
+        else {
+            data_in->enqueueWriteArray(*commandQueue, *splitInterleavedDataInterface->in);
 
-            clFFT_DataFormat dataFormat = clFFT_SplitComplexFormat;
             bool planar = (dataFormat == clFFT_SplitComplexFormat);
             if (planar) { xCLErr(clFFT_ExecutePlannar((*commandQueue)(), plan, this->batchCount, dir, data_in->getReals(), data_in->getImaginaries(), data_out->getReals(), data_out->getImaginaries(), 0, NULL, NULL)); }
             else { xCLErr(clFFT_ExecuteInterleaved((*commandQueue)(), plan, this->batchCount, dir, data_in->getData(), data_out->getData(), 0, NULL, NULL)); }
 
-            xCLErr(clFinish((*commandQueue)()));
-
-            data_out->enqueueReadArray(*commandQueue, *this->out);
+            data_out->enqueueReadArray(*commandQueue, *splitInterleavedDataInterface->out);
         }
     }
 
@@ -132,8 +145,6 @@ public:
 
         delete context;
         delete commandQueue;
-        delete this->in;
-        delete this->out;
     }
 };
 

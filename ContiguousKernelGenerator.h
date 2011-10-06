@@ -1,6 +1,6 @@
 /*
  * The information in this file is
- * Copyright (C) 2010-2011, Sven De Smet <sven@cubiccarrot.com>
+ * Copyright (C) 2011, Sven De Smet <sven@cubiccarrot.com>
  * and is subject to the terms and conditions of the
  * GNU Lesser General Public License Version 2.1
  * The license text is available from
@@ -29,6 +29,7 @@
 #include <sstream>
 #include "math.h"
 #include <vector>
+#include "Complex.h"
 
 typedef std::string streng;
 
@@ -172,13 +173,20 @@ inline K add(const K a, const K b) { return komplex(a.r + b.r, a.i + b.i); };\n"
     Array buff1 = Array("K", LL, true, "buff1_");
 
     result << buff0.getDeclaration() << "\n" << buff1.getDeclaration() << "\n";
-   // defines << "    const int fracLG_NG = " << LG/NG << ";\n";
     result << "  if (j < butterflyCount) {\n";
     // Load data
     std::stringstream subArrayReader; subArrayReader << "\
+    __global float *inF = (__global float*) in;\n\
+    __global float *outF = (__global float*) out;\n\
     int readStartOffset = zG + "<< (LG/NG) * Bq << "*gG;\n";
-    for (int sG = 0; sG < Bq; ++sG) {
-        subArrayReader << buff0.getItem(sG).getRepresentation() << " = in[readStartOffset + " << sG*(LG/NG) << "];\n";
+    int plannarMask = (1 << GlobalPlannarLevel) - 1;
+    for (int sG = 0; sG < Bq; ++sG) { subArrayReader << "{";
+        subArrayReader << "int index = readStartOffset + " << sG*(LG/NG) << ";";
+        subArrayReader << "int ix = ((index >> " << GlobalPlannarLevel << ") << " << (GlobalPlannarLevel + 1) << ") | (index & " << plannarMask << ");";
+//        subArrayReader << buff0.getItem(sG).getRepresentation() << " = in[readStartOffset + " << sG*(LG/NG) << "];\n";
+        subArrayReader << buff0.getItem(sG).getRepresentation() << ".r = inF[ix];\n";
+        subArrayReader << buff0.getItem(sG).getRepresentation() << ".i = inF[ix + " << (1 << GlobalPlannarLevel) << "];\n";
+        subArrayReader << "}";
     }
     if (preTwiddle) for (int sG = 0; sG < Bq; ++sG) {
         subArrayReader << buff0.getItem(sG).getRepresentation()
@@ -224,8 +232,13 @@ inline K add(const K a, const K b) { return komplex(a.r + b.r, a.i + b.i); };\n"
     // Write results
     std::stringstream subArrayWriter; subArrayWriter << "\n\
     int writeStartOffset = " << LG/NG << "*gG + zG;\n";
-    for (int h = 0; h < Bq; ++h) {
-        subArrayWriter << "        out[writeStartOffset + " << h*Aq*(LG/NG) << "] = " << buffs[kL & 1]->getItem(h).getRepresentation() << ";\n";
+    for (int h = 0; h < Bq; ++h) { subArrayWriter << "{";
+        subArrayWriter << "int index = writeStartOffset + " << h*Aq*(LG/NG) << ";";
+        subArrayWriter << "int ix = ((index >> " << GlobalPlannarLevel << ") << " << (GlobalPlannarLevel + 1) << ") | (index & " << plannarMask << ");";
+        //subArrayWriter << "        out[writeStartOffset + " << h*Aq*(LG/NG) << "] = " << buffs[kL & 1]->getItem(h).getRepresentation() << ";\n";
+        subArrayWriter << "        outF[ix] = " << buffs[kL & 1]->getItem(h).getRepresentation() << ".r;\n";
+        subArrayWriter << "        outF[ix + " << (1 << GlobalPlannarLevel) << "] = " << buffs[kL & 1]->getItem(h).getRepresentation() << ".i;\n";
+        subArrayWriter << "}";
     }
     result << subArrayWriter.str();
     result << "  }\n";

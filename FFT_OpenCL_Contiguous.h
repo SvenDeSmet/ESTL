@@ -1,11 +1,27 @@
 /*
  * The information in this file is
- * Copyright (C) 2010-2011, Sven De Smet <sven@cubiccarrot.com>
+ * Copyright (C) 2011, Sven De Smet <sven@cubiccarrot.com>
  * and is subject to the terms and conditions of the
  * GNU Lesser General Public License Version 2.1
  * The license text is available from
  * http://www.gnu.org/licenses/lgpl.html
+ *
+ * Disclaimer: IMPORTANT:
+ *
+ * The Software is provided on an "AS IS" basis.  Sven De Smet MAKES NO WARRANTIES,
+ * EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION THE IMPLIED WARRANTIES OF
+ * NON - INFRINGEMENT, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE,
+ * REGARDING THE SOFTWARE OR ITS USE AND OPERATION ALONE OR IN COMBINATION WITH YOUR PRODUCTS.
+ *
+ * IN NO EVENT SHALL Sven De Smet BE LIABLE FOR ANY SPECIAL, INDIRECT, INCIDENTAL OR
+ * CONSEQUENTIAL DAMAGES ( INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION ) ARISING IN ANY WAY OUT OF THE USE, REPRODUCTION, MODIFICATION
+ * AND / OR DISTRIBUTION OF THE SOFTWARE, HOWEVER CAUSED AND WHETHER
+ * UNDER THEORY OF CONTRACT, TORT ( INCLUDING NEGLIGENCE ), STRICT LIABILITY OR
+ * OTHERWISE, EVEN IF Sven De Smet HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 
 #ifndef FFT_OPENCL_CONTIGUOUS_H
 #define FFT_OPENCL_CONTIGUOUS_H
@@ -36,12 +52,12 @@ private:
     std::vector<cl::Device> devicesToUse;
     std::vector<streng> src;
     std::vector<int> AGs, BGs, NGs;
+    PlannarizedDataInterface<D>* plannarizedDataInterface;
 public:
     Timer* timerComputation;
 
     FFT_OpenCL_Contiguous(int iSize, bool iForward = true, int iBatchCount = 1) : FFT<D>(iSize, iBatchCount), forward(iForward), context(NULL), commandQueue(NULL), timerComputation(NULL) {
-        this->in = new ComplexArray<D>(this->batchCount*this->size, false);
-        this->out = new ComplexArray<D>(this->batchCount*this->size, false);
+        this->dataInterface = plannarizedDataInterface = new PlannarizedDataInterface<D>(this->batchCount*this->size);
 
 //        printf("Retrieving platforms"); fflush(stdout);
 
@@ -89,10 +105,11 @@ public:
         int memReq = this->size*sizeof(clFFT_Complex)*this->batchCount;
         if(memReq >= CLDevice(devicesToUse[0]).globalMemorySize()) { printf("Insufficient global memory"); } // throw exception
 
-        for (int d = 0; d < 2; ++d) data[d] = new ComplexArrayCL<float>(*context, this->batchCount*this->size, false);
+        data[0] = new ComplexArrayCL<float>(*context, plannarizedDataInterface->in);
+        data[1] = new ComplexArrayCL<float>(*context, plannarizedDataInterface->out);
 
         if (this->size > 1) {
-            int BG = 32;
+            int BG = 16;
             int logBGSize = 0;
             for (int a = 1; a < this->size; a *= BG) logBGSize++;
             int AG = 1;
@@ -156,13 +173,12 @@ public:
     }
 
     virtual void execute() { //printf("Starting execution with %i kernels", (int) kernels.size()); fflush(stdout);
-        if (this->size == 1) {
-            for (int q = 0; q < this->size; ++q) this->out->setElement(q, this->in->getElement(q));
-        } else { if (kernels.size() > 0) {
+        if (this->size == 1) { plannarizedDataInterface->out->setElement(0, plannarizedDataInterface->in->getElement(0)); }
+        else { if (kernels.size() > 0) {
             //printf("Kernels available..."); fflush(stdout);
 //            for (int q = 0; q < this->size; ++q) this->out->setElement(q, 888);
 //            data[1]->enqueueWriteArray(*commandQueue, *this->out);
-            data[0]->enqueueWriteArray(*commandQueue, *this->in);
+            data[0]->enqueueWriteArray(*commandQueue, *plannarizedDataInterface->in);
 
             std::vector<cl::Event> kernelEvents;
             for (int qG = 1; qG <= kernels.size(); ++qG) { cl::Kernel* kernel = kernels[qG - 1]; //printf("kernel q = %i", qG);
@@ -208,17 +224,12 @@ public:
 
 
 //            printf("Computation ends..."); fflush(stdout);
-//                     sleep(3000);
-//        if (this->size != 4) {
-  //      }
- //   xCLErr(clFinish((*commandQueue)()));
-            data[kernels.size() & 1]->enqueueReadArray(*commandQueue, *this->out);
+            data[kernels.size() & 1]->enqueueReadArray(*commandQueue, *plannarizedDataInterface->out);
 
             cl_ulong start, end;
             clGetEventProfilingInfo(kernelEvents[kernels.size() - 1](), CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &end, NULL);
             clGetEventProfilingInfo(kernelEvents[0](), CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &start, NULL);
-            double executionTimeInSeconds = (end - start) * 1.0e-9f;
-            if (timerComputation) timerComputation->addRun(executionTimeInSeconds);
+            if (timerComputation) timerComputation->addRun((end - start) * 1.0e-9f);
 //            printf("out");
 //            for (int q = 0; q < this->size; ++q) this->out->getElement(q).print();
 //            data[(kernels.size() & 1) ^ 1]->enqueueReadArray(*commandQueue, *this->in);
@@ -235,8 +246,6 @@ public:
         delete program;
         delete context;
         delete commandQueue;
-        delete this->in;
-        delete this->out;
     }
 };
 

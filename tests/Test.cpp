@@ -1,3 +1,27 @@
+/*
+ * The information in this file is
+ * Copyright (C) 2011, Sven De Smet <sven@cubiccarrot.com>
+ * and is subject to the terms and conditions of the
+ * GNU Lesser General Public License Version 2.1
+ * The license text is available from
+ * http://www.gnu.org/licenses/lgpl.html
+ *
+ * Disclaimer: IMPORTANT:
+ *
+ * The Software is provided on an "AS IS" basis.  Sven De Smet MAKES NO WARRANTIES,
+ * EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION THE IMPLIED WARRANTIES OF
+ * NON - INFRINGEMENT, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE,
+ * REGARDING THE SOFTWARE OR ITS USE AND OPERATION ALONE OR IN COMBINATION WITH YOUR PRODUCTS.
+ *
+ * IN NO EVENT SHALL Sven De Smet BE LIABLE FOR ANY SPECIAL, INDIRECT, INCIDENTAL OR
+ * CONSEQUENTIAL DAMAGES ( INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION ) ARISING IN ANY WAY OUT OF THE USE, REPRODUCTION, MODIFICATION
+ * AND / OR DISTRIBUTION OF THE SOFTWARE, HOWEVER CAUSED AND WHETHER
+ * UNDER THEORY OF CONTRACT, TORT ( INCLUDING NEGLIGENCE ), STRICT LIABILITY OR
+ * OTHERWISE, EVEN IF Sven De Smet HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 #include "Test.h"
 
 #include "../FFTs.h"
@@ -41,14 +65,14 @@ bool TestFourierFloat::execute() {
     typedef Complex<D> C;
 
     for (int f = 0; f < fftFactories.size(); ++f) {
-        for (int m = 17; m < 21; m++) { int M = 1 << m; //qDebug("%i", m);
+        for (int m = 16; m < 22; m++) { int M = 1 << m; //qDebug("%i", m);
             printf("@@@ m == %i: ", m);
             FFT<D>* fft = fftFactories[f]->newFFT(M);
             Timer timer, timerComputation;
 
             if (FFT_OpenCL_Contiguous<D>* fft_opencl = dynamic_cast<FFT_OpenCL_Contiguous<D>*>(fft)) { fft_opencl->timerComputation = &timerComputation; }
 
-            int maxComps = (4096*8)/(1 << m);
+            int maxComps = (4096*1024*8)/(1 << m);
             if (maxComps == 0) maxComps = 1;
 
             for (int k = 0; (2*k < M) && (k < maxComps); k++) {// qDebug("k == %i ** (M = %i) ***********", k, M);
@@ -64,7 +88,6 @@ bool TestFourierFloat::execute() {
                 }
             }
 
-            //char temp[100];
             int floatingOperations = (5.0*m*(1 << m));
             double GFlopsTotal = 1E-9*floatingOperations/timer.getAverageTime();
             double GFlopsComputation = (timerComputation.getRuns() > 0) ? 1E-9*floatingOperations/timerComputation.getAverageTime() : -1;
@@ -81,14 +104,15 @@ bool TestFourierFloat::execute() {
 bool performTests() {
     bool result = true;
 
-            printf("Starting tests");  fflush(stdout);
+    printf("Starting tests");  fflush(stdout);
 
     typedef float T;
     std::vector<FFTFactory<T> *> factories;
    // factories.push_back(new FFTFactorySpecific<FFT_OpenCL_Contiguous_InnerKernelTester<T> >());
-   // factories.push_back(new FFTFactorySpecific<FFT_FFTW3<T> >());
+    factories.push_back(new FFTFactorySpecific<FFT_FFTW3<T> >());
     factories.push_back(new FFTFactorySpecific<FFT_OpenCL_Contiguous<T> >());
-   // factories.push_back(new FFTFactorySpecific<FFT_OpenCL_A<T> >());
+    factories.push_back(new FFTFactorySpecific<FFT_OpenCL_A<T, clFFT_InterleavedComplexFormat> >());
+    factories.push_back(new FFTFactorySpecific<FFT_OpenCL_A<T, clFFT_SplitComplexFormat> >());
 
     TestFourierFloat* test = new TestFourierFloat(factories);
     try { result = result && test->execute(); }

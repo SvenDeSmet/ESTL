@@ -3,8 +3,8 @@ This library contains an OpenCL implementation of an FFT and is still in develop
 More tests must be done before using it in production quality software.
 
 /*
- * The library is
- * Copyright (C) 2010-2011, Sven De Smet <sven@cubiccarrot.com>
+ * The information in this file is
+ * Copyright (C) 2011, Sven De Smet <sven@cubiccarrot.com>
  * and is subject to the terms and conditions of the
  * GNU Lesser General Public License Version 2.1
  * The license text is available from
@@ -25,3 +25,4 @@ More tests must be done before using it in production quality software.
  * UNDER THEORY OF CONTRACT, TORT ( INCLUDING NEGLIGENCE ), STRICT LIABILITY OR
  * OTHERWISE, EVEN IF Sven De Smet HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
