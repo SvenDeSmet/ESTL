@@ -18,8 +18,6 @@
 
 #include "uOpenCL.h"
 
-
-
 typedef enum { clFFT_OUT_OF_PLACE, clFFT_IN_PLACE } clFFT_TestType;
 
 typedef struct {

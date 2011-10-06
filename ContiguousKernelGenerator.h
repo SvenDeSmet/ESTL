@@ -136,7 +136,7 @@ inline K unit(int n, int d);\n\
 inline K mul(const K a, const K b);\n\
 inline K add(const K a, const K b);\n\
 inline K komplex(T iR, T iI) { K k; k.r = iR; k.i = iI; return k; };\n\
-inline K unit(int n, int d) { const float frac_PI2_d = " << (float) (2*M_PI) << "/d; return komplex(native_cos(frac_PI2_d*n), native_sin(frac_PI2_d*n)); };\n\
+inline K unit(int n, int d) { const float frac_PI2_d = " << (float) (2*M_PI) << "f/d; return komplex(native_cos(frac_PI2_d*n), native_sin(frac_PI2_d*n)); };\n\
 inline K mul(const K a, const K b) { return komplex(a.r * b.r - a.i * b.i, a.r * b.i + a.i * b.r); };\n\
 inline K add(const K a, const K b) { return komplex(a.r + b.r, a.i + b.i); };\n";
     std::stringstream kernelhead; kernelhead << "__kernel void contiguousFFT_step" << kernelIx << "(__global K *in, __global K *out) {\n";
@@ -150,8 +150,8 @@ inline K add(const K a, const K b) { return komplex(a.r + b.r, a.i + b.i); };\n"
     int gG = j/" << LG/NG << ";\n\
     int zG = j % " << LG/NG << ";\n";
 
-    Array buff0 = Array("K", LL, false, "buff0_");
-    Array buff1 = Array("K", LL, false, "buff1_");
+    Array buff0 = Array("K", LL, true, "buff0_");
+    Array buff1 = Array("K", LL, true, "buff1_");
 
     result << buff0.getDeclaration() << "\n" << buff1.getDeclaration() << "\n";
     defines << "    const int fracLG_NG = " << LG/NG << ";\n";
@@ -171,10 +171,6 @@ inline K add(const K a, const K b) { return komplex(a.r + b.r, a.i + b.i); };\n"
     for (int qL = 1; qL <= kL; ++qL) {
         Array& source = *buffs[(qL ^ 1) & 1];
         Array& target = *buffs[qL & 1];
-
-//        defines << "    const int AL" << qL << " = " << AL[qL - 1] << ";\n";
-//        defines << "    const int BL" << qL << " = " << BL[qL - 1] << ";\n";
-//        defines << "    const int fracLL_NL" << qL << " = " << (LL/NL[qL - 1]) << ";\n";
 
         std::stringstream subkernel;
         for (int gL = 0; gL < AL[qL - 1]; ++gL) { subkernel << " { ";

@@ -1,3 +1,5 @@
+First value: Total time
+Second value: Total time without transfers CPU-Device-CPU
 
 First OpenCL implementation:
 
@@ -148,3 +150,52 @@ After optimising cos/sin-computation:
 @@@ m == 19: [Device: GeForce 9400, Vendor: NVIDIA] 0.522565 GFlops/s (1.152464 GFlops/s)
 @@@ m == 20: [Device: GeForce 9400, Vendor: NVIDIA] 0.669581 GFlops/s (1.259379 GFlops/s)
 @@@ m == 21: [Device: GeForce 9400, Vendor: NVIDIA] 0.706218 GFlops/s (1.325056 GFlops/s)
+
++ Intermediate buffers in-register:
+
+@@@ m == 0: [Device: GeForce 9400, Vendor: NVIDIA] 0.000000 GFlops/s (-1.000000 GFlops/s)
+@@@ m == 1: [Device: GeForce 9400, Vendor: NVIDIA] 0.000003 GFlops/s (0.000006 GFlops/s)
+@@@ m == 2: [Device: GeForce 9400, Vendor: NVIDIA] 0.000026 GFlops/s (0.000054 GFlops/s)
+@@@ m == 3: [Device: GeForce 9400, Vendor: NVIDIA] 0.000097 GFlops/s (0.000251 GFlops/s)
+@@@ m == 4: [Device: GeForce 9400, Vendor: NVIDIA] 0.000088 GFlops/s (0.000219 GFlops/s)
+@@@ m == 5: [Device: GeForce 9400, Vendor: NVIDIA] 0.000261 GFlops/s (0.000794 GFlops/s)
+@@@ m == 6: [Device: GeForce 9400, Vendor: NVIDIA] 0.002260 GFlops/s (0.006781 GFlops/s)
+@@@ m == 7: [Device: GeForce 9400, Vendor: NVIDIA] 0.005184 GFlops/s (0.015209 GFlops/s)
+@@@ m == 8: [Device: GeForce 9400, Vendor: NVIDIA] 0.010365 GFlops/s (0.028823 GFlops/s)
+@@@ m == 9: [Device: GeForce 9400, Vendor: NVIDIA] 0.019027 GFlops/s (0.047231 GFlops/s)
+@@@ m == 10: [Device: GeForce 9400, Vendor: NVIDIA] 0.032918 GFlops/s (0.068333 GFlops/s)
+@@@ m == 11: [Device: GeForce 9400, Vendor: NVIDIA] 0.052682 GFlops/s (0.106026 GFlops/s)
+@@@ m == 12: [Device: GeForce 9400, Vendor: NVIDIA] 0.071983 GFlops/s (0.142857 GFlops/s)
+@@@ m == 13: [Device: GeForce 9400, Vendor: NVIDIA] 0.132966 GFlops/s (0.260598 GFlops/s)
+@@@ m == 14: [Device: GeForce 9400, Vendor: NVIDIA] 0.229345 GFlops/s (0.457017 GFlops/s)
+@@@ m == 15: [Device: GeForce 9400, Vendor: NVIDIA] 0.336997 GFlops/s (0.644691 GFlops/s)
+@@@ m == 16: [Device: GeForce 9400, Vendor: NVIDIA] 0.423021 GFlops/s (0.818721 GFlops/s)
+@@@ m == 17: [Device: GeForce 9400, Vendor: NVIDIA] 0.522105 GFlops/s (1.015742 GFlops/s)
+@@@ m == 18: [Device: GeForce 9400, Vendor: NVIDIA] 0.604717 GFlops/s (1.200804 GFlops/s)
+@@@ m == 19: [Device: GeForce 9400, Vendor: NVIDIA] 0.622732 GFlops/s (1.169032 GFlops/s)
+@@@ m == 20: [Device: GeForce 9400, Vendor: NVIDIA] 0.671758 GFlops/s (1.260063 GFlops/s)
+@@@ m == 21: [Device: GeForce 9400, Vendor: NVIDIA] 0.709181 GFlops/s (1.329348 GFlops/s)
+
+After improving measurements by computing more FFTs per compiled kernel (semi-batch):
+
+@@@ m == 2: [Device: GeForce 9400, Vendor: NVIDIA]Initialization complete 0.000018 GFlops/s (0.000049 GFlops/s)
+@@@ m == 3: [Device: GeForce 9400, Vendor: NVIDIA]Initialization complete 0.000047 GFlops/s (0.000247 GFlops/s)
+@@@ m == 4: [Device: GeForce 9400, Vendor: NVIDIA]Initialization complete 0.000131 GFlops/s (0.000857 GFlops/s)
+@@@ m == 5: [Device: GeForce 9400, Vendor: NVIDIA]Initialization complete 0.000287 GFlops/s (0.000439 GFlops/s)
+@@@ m == 6: [Device: GeForce 9400, Vendor: NVIDIA]Initialization complete 0.001427 GFlops/s (0.003299 GFlops/s)
+@@@ m == 7: [Device: GeForce 9400, Vendor: NVIDIA]Initialization complete 0.004352 GFlops/s (0.016181 GFlops/s)
+@@@ m == 8: [Device: GeForce 9400, Vendor: NVIDIA]Initialization complete 0.011305 GFlops/s (0.033452 GFlops/s)
+@@@ m == 9: [Device: GeForce 9400, Vendor: NVIDIA]Initialization complete 0.019461 GFlops/s (0.039450 GFlops/s)
+@@@ m == 10: [Device: GeForce 9400, Vendor: NVIDIA]Initialization complete 0.053697 GFlops/s (0.140548 GFlops/s)
+@@@ m == 11: [Device: GeForce 9400, Vendor: NVIDIA]Initialization complete 0.100615 GFlops/s (0.247256 GFlops/s)
+@@@ m == 12: [Device: GeForce 9400, Vendor: NVIDIA]Initialization complete 0.199186 GFlops/s (0.469585 GFlops/s)
+@@@ m == 13: [Device: GeForce 9400, Vendor: NVIDIA]Initialization complete 0.297409 GFlops/s (0.659342 GFlops/s)
+@@@ m == 14: [Device: GeForce 9400, Vendor: NVIDIA]Initialization complete 0.542798 GFlops/s (0.937474 GFlops/s)
+@@@ m == 15: [Device: GeForce 9400, Vendor: NVIDIA]Initialization complete 0.653999 GFlops/s (1.001111 GFlops/s)
+@@@ m == 16: [Device: GeForce 9400, Vendor: NVIDIA]Initialization complete 0.857477 GFlops/s (1.159987 GFlops/s)
+@@@ m == 17: [Device: GeForce 9400, Vendor: NVIDIA]Initialization complete 0.827419 GFlops/s (1.212898 GFlops/s)
+@@@ m == 18: [Device: GeForce 9400, Vendor: NVIDIA]Initialization complete 0.961815 GFlops/s (1.246846 GFlops/s)
+@@@ m == 19: [Device: GeForce 9400, Vendor: NVIDIA]Initialization complete 0.895628 GFlops/s (1.083387 GFlops/s)
+@@@ m == 20: [Device: GeForce 9400, Vendor: NVIDIA]Initialization complete 1.020551 GFlops/s (1.243378 GFlops/s)
+@@@ m == 21: [Device: GeForce 9400, Vendor: NVIDIA]Initialization complete 1.170944 GFlops/s (1.388303 GFlops/s)
+

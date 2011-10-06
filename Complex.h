@@ -12,6 +12,7 @@
 
 #include <stdlib.h>
 #include <math.h>
+#include <string>
 
 #define GlobalAlignLevel 5
 template <class D> class AlignedArray {
@@ -51,6 +52,7 @@ public:
         Complex<R>(R iR) : r(iR), i((R) 0.0) { }
         static Complex<R> unit(double iPhase) { return Complex<R>(cos(iPhase), sin(iPhase)); }
         void print() const { printf("(%f, %f)\n", r, i); }
+        std::string toString() const { char result[128]; sprintf(result, "(%f, %f)", r, i); return result; }
         R getNorm() const { return sqrt(getNormSquared()); }
         R getNormSquared() const { return ((*this) * ((*this).getConjugate())).getReal(); }
         Complex<R> getNormalizedComplex() const { return (*this)/((R) sqrt(getNormSquared())); }

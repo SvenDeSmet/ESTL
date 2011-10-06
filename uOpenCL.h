@@ -14,48 +14,41 @@
 #define __CL_ENABLE_EXCEPTIONS
 #define CL_LOG_ERRORS stdout
 #include "cl.hpp"
+#include <exception>
+#include <string>
+#define xCLErr(result) { if (result != CL_SUCCESS) { printf("Exception"); fflush(stdout); throw CLException(result); } }
 
-
-#define xCLErr(result) { \
-    if (result != CL_SUCCESS) { \
-        printf("cl error %i", result); \
-        switch (result) { \
-            case CL_INVALID_COMMAND_QUEUE: printf("CL_INVALID_COMMAND_QUEUE"); break; \
-            case CL_INVALID_CONTEXT: printf("CL_INVALID_CONTEXT"); break; \
-            case CL_INVALID_MEM_OBJECT: printf("CL_INVALID_MEM_OBJECT"); break; \
-            case CL_INVALID_VALUE: printf("CL_INVALID_VALUE"); break; \
-            case CL_INVALID_EVENT_WAIT_LIST: printf("CL_INVALID_EVENT_WAIT_LIST"); break; \
-            case CL_MEM_OBJECT_ALLOCATION_FAILURE: printf("CL_MEM_OBJECT_ALLOCATION_FAILURE"); break; \
-            case CL_OUT_OF_HOST_MEMORY: printf("CL_OUT_OF_HOST_MEMORY"); break; \
-        } \
-    } \
-}
-
-class CLException {
+class CLException : public std::exception {
 private:
     cl::Error e;
 public:
     CLException(cl::Error iE) : e(iE) { }
 
-    void handle() {
+  virtual const char* what() const throw() { return handle().c_str(); }
+
+    std::string handle() const {
+        std::string msg = "[";
         switch (e.err()) {
-            case CL_INVALID_COMMAND_QUEUE: printf("CL_INVALID_COMMAND_QUEUE"); break;
-            case CL_INVALID_CONTEXT: printf("CL_INVALID_CONTEXT"); break;
-            case CL_INVALID_MEM_OBJECT: printf("CL_INVALID_MEM_OBJECT"); break;
-            case CL_INVALID_VALUE: printf("CL_INVALID_VALUE"); break;
-            case CL_INVALID_PROGRAM_EXECUTABLE: printf("CL_INVALID_PROGRAM_EXECUTABLE"); break;
-            case CL_INVALID_KERNEL: printf("CL_INVALID_KERNEL"); break;
-            case CL_INVALID_KERNEL_ARGS: printf("CL_INVALID_KERNEL_ARGS"); break;
-            case CL_INVALID_WORK_DIMENSION: printf("CL_INVALID_WORK_DIMENSION"); break;
-            case CL_INVALID_WORK_GROUP_SIZE: printf("CL_INVALID_WORK_GROUP_SIZE"); break;
-            case CL_INVALID_WORK_ITEM_SIZE: printf("CL_INVALID_WORK_ITEM_SIZE"); break;
-            case CL_INVALID_GLOBAL_OFFSET: printf("CL_INVALID_GLOBAL_OFFSET"); break;
-            case CL_OUT_OF_RESOURCES: printf("CL_OUT_OF_RESOURCES"); break;
-            case CL_MEM_OBJECT_ALLOCATION_FAILURE: printf("CL_MEM_OBJECT_ALLOCATION_FAILURE"); break;
-            case CL_INVALID_EVENT_WAIT_LIST: printf("CL_INVALID_EVENT_WAIT_LIST"); break;
-            case CL_OUT_OF_HOST_MEMORY: printf("CL_OUT_OF_HOST_MEMORY"); break;
+            case CL_INVALID_COMMAND_QUEUE: msg += "CL_INVALID_COMMAND_QUEUE"; break;
+            case CL_INVALID_CONTEXT: msg += "CL_INVALID_CONTEXT"; break;
+            case CL_INVALID_MEM_OBJECT: msg += "CL_INVALID_MEM_OBJECT"; break;
+            case CL_INVALID_VALUE: msg += "CL_INVALID_VALUE"; break;
+            case CL_INVALID_PROGRAM_EXECUTABLE: msg += "CL_INVALID_PROGRAM_EXECUTABLE"; break;
+            case CL_INVALID_KERNEL: msg += "CL_INVALID_KERNEL"; break;
+            case CL_INVALID_KERNEL_ARGS: msg += "CL_INVALID_KERNEL_ARGS"; break;
+            case CL_INVALID_WORK_DIMENSION: msg += "CL_INVALID_WORK_DIMENSION"; break;
+            case CL_INVALID_WORK_GROUP_SIZE: msg += "CL_INVALID_WORK_GROUP_SIZE"; break;
+            case CL_INVALID_WORK_ITEM_SIZE: msg += "CL_INVALID_WORK_ITEM_SIZE"; break;
+            case CL_INVALID_GLOBAL_OFFSET: msg += "CL_INVALID_GLOBAL_OFFSET"; break;
+            case CL_OUT_OF_RESOURCES: msg += "CL_OUT_OF_RESOURCES"; break;
+            case CL_MEM_OBJECT_ALLOCATION_FAILURE: msg += "CL_MEM_OBJECT_ALLOCATION_FAILURE"; break;
+            case CL_INVALID_EVENT_WAIT_LIST: msg += "CL_INVALID_EVENT_WAIT_LIST"; break;
+            case CL_OUT_OF_HOST_MEMORY: msg += "CL_OUT_OF_HOST_MEMORY"; break;
         }
-        printf("CL Exception");
+        msg += " (CL Exception)]";
+        printf(msg.c_str());
+        fflush(stdout);
+        return msg;
     }
 };
 
@@ -145,7 +138,6 @@ public:
         return result[dim];
     }
 
-
     cl_uint maxClockFrequency() {
         cl_uint result;
         xCLErr(device.getInfo<cl_uint>(CL_DEVICE_MAX_CLOCK_FREQUENCY, &result));
@@ -161,9 +153,7 @@ public:
 
 template <class D> class ComplexArrayCL {
 private:
-    cl_mem data;
-    cl_mem reals;
-    cl_mem imaginaries;
+    cl_mem data, reals, imaginaries;
     int size;
     bool planar;
 public:

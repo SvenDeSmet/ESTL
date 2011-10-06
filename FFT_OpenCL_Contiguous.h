@@ -43,6 +43,8 @@ public:
         this->in = new ComplexArray<D>(this->batchCount*this->size, false);
         this->out = new ComplexArray<D>(this->batchCount*this->size, false);
 
+//        printf("Retrieving platforms"); fflush(stdout);
+
         std::vector<cl::Platform> platforms;
         xCLErr(cl::Platform::get(&platforms));
 
@@ -74,10 +76,13 @@ public:
             }
         }
 
+     //   printf("Creating context..."); fflush(stdout);
+
         cl_int err;
         context = new cl::Context::Context(devicesToUse, NULL, NULL, NULL, &err);
         xCLErr(err);
 
+//printf("Creating command queue..."); fflush(stdout);
         commandQueue = new cl::CommandQueue::CommandQueue(*context, devicesToUse[0], 0, &err);
         xCLErr(err);
 
@@ -113,7 +118,7 @@ public:
             }
 
             program = new cl::Program(*context, *source);
-            try { program->build(devicesToUse); }
+            try { program->build(devicesToUse, "-cl-mad-enable"); }
             catch (cl::Error cle) {
                 printf("Error: %s", cle.what());
 
@@ -146,14 +151,14 @@ public:
             }
         }
 
-//        printf("Initialization complete");
+        printf("Initialization complete"); fflush(stdout);
     }
 
-    virtual void execute() { //printf("Starting execution with %i kernels", (int) kernels.size());
+    virtual void execute() {// printf("Starting execution with %i kernels", (int) kernels.size()); fflush(stdout);
         if (this->size == 1) {
             for (int q = 0; q < this->size; ++q) this->out->setElement(q, this->in->getElement(q));
         } else { if (kernels.size() > 0) {
-            for (int q = 0; q < this->size; ++q) this->out->setElement(q, 888);
+//            for (int q = 0; q < this->size; ++q) this->out->setElement(q, 888);
 //            data[1]->enqueueWriteArray(*commandQueue, *this->out);
             data[0]->enqueueWriteArray(*commandQueue, *this->in);
 
@@ -165,9 +170,6 @@ public:
 
                 int butterflyCount = this->size/BGs[qG - 1];
                 int s = this->size/BGs[qG - 1];
- //               int wGS2 = 1;
- //               while (2*wGS2 <= workGroupSize) wGS2 *= 2;
- //               int localSize = (s > wGS2) ? wGS2 : s;
                 int localSize = (s > workGroupSize) ? workGroupSize : s;
                 butterflyCount = localSize*((butterflyCount + (localSize - 1))/localSize);
 
@@ -185,8 +187,8 @@ public:
             for (int q = 0; q < this->size; ++q) this->in->getElement(q).print();
 */
                 try { cl::Event e = func(); if (qG == kernels.size()) e.wait(); } // enqueue kernel
-                catch (cl::Error e) { printf("CL Exception"); CLException cle = CLException(e); cle.handle();  }
-                catch (...) { printf("Unknown exception"); }
+                catch (cl::Error e) { printf("CL Exception"); CLException cle = CLException(e); cle.handle(); fflush(stdout); }
+                catch (...) { printf("Unknown exception"); fflush(stdout); }
 
 //    xCLErr(clFinish((*commandQueue)()));
   /*          printf("After execution");
@@ -218,6 +220,9 @@ public:
 
     ~FFT_OpenCL_Contiguous() {
         for (int d = 0; d < 2; ++d) delete data[d];
+        for (int k = 0; k < (int) kernels.size(); ++k) delete kernels[k];
+        delete source;
+        delete program;
         delete context;
         delete commandQueue;
         delete this->in;
