@@ -25,17 +25,37 @@
 #ifndef TIMER_H
 #define TIMER_H
 
+#if defined(LINUX)
 #include <sys/time.h>
 #include <stdint.h>
+#include <unistd.h>
+#endif
+
+#ifdef _WIN32
+//#include <ctime>
+ #include <windows.h>
+ #include <winbase.h>
+#endif
+
+#ifdef MAC
 #include <mach/mach.h>
 #include <mach/mach_time.h>
+#endif
+
+#include "stdio.h"
 
 class Timer {
 private:
+
     double totalTime;
-    double lastStartTime;
     bool started;
     int runs;
+
+
+#ifdef MAC
+    double lastStartTime;
+
+    double getTime() { return mach_absolute_time(); }
 
     double subtractTimes(uint64_t endTime, uint64_t startTime) {
         uint64_t difference = endTime - startTime;
@@ -51,12 +71,42 @@ private:
 
         return conversion * (double) difference;
     }
+#endif
+#ifdef _WIN32
+    LARGE_INTEGER lastStartTime;
+
+    LARGE_INTEGER getTime() { LARGE_INTEGER result; QueryPerformanceCounter(&result); return result; }
+
+    double subtractTimes(LARGE_INTEGER endTime, LARGE_INTEGER startTime) {
+        LARGE_INTEGER ticksPerSecond;
+        if (!QueryPerformanceFrequency(&ticksPerSecond)) printf("\tQueryPerformance not present");
+
+        LARGE_INTEGER cputime;
+        cputime.QuadPart = endTime.QuadPart - startTime.QuadPart;
+
+        return ((double) cputime.QuadPart / (double) ticksPerSecond.QuadPart);
+    }
+#endif
+#ifdef LINUX
+    struct timeval lastStartTime;
+
+    struct timeval getTime() { struct timeval result; gettimeofday(&result, NULL); return result; }
+
+    double subtractTimes(struct timeval end, struct timeval start) {
+        long seconds, useconds;
+
+        seconds  = end.tv_sec  - start.tv_sec;
+        useconds = end.tv_usec - start.tv_usec;
+
+        return ((seconds) * 1000 + useconds/1000.0);
+    }
+#endif
 
 public:
-    Timer() : totalTime(0), lastStartTime(0), started(false), runs(0) { }
+    Timer() : totalTime(0), started(false), runs(0) { }
 
-    void resume() { lastStartTime = mach_absolute_time(); started = true; }
-    void suspend() { addRun(subtractTimes(mach_absolute_time(), lastStartTime)); started = false; }
+    void resume() { lastStartTime = getTime(); started = true; }
+    void suspend() { addRun(subtractTimes(getTime(), lastStartTime)); started = false; }
 
     void addRun(double runTime) { totalTime += runTime; runs++; }
 

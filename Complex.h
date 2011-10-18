@@ -1,27 +1,10 @@
-/*
- * The information in this file is
+/* The information in this file is
  * Copyright (C) 2011, Sven De Smet <sven@cubiccarrot.com>
  * and is subject to the terms and conditions of the
  * GNU Lesser General Public License Version 2.1
  * The license text is available from
  * http://www.gnu.org/licenses/lgpl.html
- *
- * Disclaimer: IMPORTANT:
- *
- * The Software is provided on an "AS IS" basis.  Sven De Smet MAKES NO WARRANTIES,
- * EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION THE IMPLIED WARRANTIES OF
- * NON - INFRINGEMENT, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE,
- * REGARDING THE SOFTWARE OR ITS USE AND OPERATION ALONE OR IN COMBINATION WITH YOUR PRODUCTS.
- *
- * IN NO EVENT SHALL Sven De Smet BE LIABLE FOR ANY SPECIAL, INDIRECT, INCIDENTAL OR
- * CONSEQUENTIAL DAMAGES ( INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION ) ARISING IN ANY WAY OUT OF THE USE, REPRODUCTION, MODIFICATION
- * AND / OR DISTRIBUTION OF THE SOFTWARE, HOWEVER CAUSED AND WHETHER
- * UNDER THEORY OF CONTRACT, TORT ( INCLUDING NEGLIGENCE ), STRICT LIABILITY OR
- * OTHERWISE, EVEN IF Sven De Smet HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 
 #ifndef CCOMPLEX_H_
 #define CCOMPLEX_H_
@@ -43,8 +26,8 @@ public:
             alignedData = (D*) ((((long int) mem + ((1 << alignLevel) - 1)) >> alignLevel) << alignLevel);
 	}
 	
-        inline D& operator [] (int index) { return alignedData[index]; }
-        inline const D operator [] (int index) const { return alignedData[index]; }
+        inline D& operator [] (int index)       { return alignedData[index]; }
+        inline D  operator [] (int index) const { return alignedData[index]; }
 	
         ~AlignedArray() { delete [] mem; }
 };
@@ -62,7 +45,7 @@ public:
     }
 
     inline void setElement(int index, int element, const D value) { array[getPosition(index, element)] = value; }
-    inline const D getElement(int index, int element) const { return array[getPosition(index, element)]; }
+    inline D    getElement(int index, int element) const          { return array[getPosition(index, element)]; }
 };
 
 #define ScaleFact 16
@@ -169,11 +152,7 @@ template <> Complex<short int> inline operator * (const Complex<short int> a, co
 		                      (((int) a.r * (int) b.i + (int) a.i * (int) b.r)) >> 14);
 }
 
-
 template <class R> Complex<R> inline operator / (const Complex<R> b, const R c) { return (1/c) * b; }
-
-
-
 
 template <class D> class ComplexArray {
 private:
@@ -212,57 +191,5 @@ public:
 
     ~ComplexArray() { delete data; }
 };
-/*
-template <class D> class ComplexArrayAbstract {
-private:
-    AlignedArray<D>* data;
-    int size;
-    bool planar;
-    int planarGroupSize;
-public:
-    class ComplexAbstract {
-    private:
-        const int element;
-    public:
-        ComplexAbstract(int iElement) : element(iElement) { }
 
-        D& r() { return planar ? data[]; }
-        D& i() { return planar ? data[]; }
-    };
-
-    ComplexAbstract operator [] (int index) { return ComplexAbstract(index); }
-
-    ComplexArray(int iSize, bool iPlanar = true) : size(iSize), planar(iPlanar) {
-        data = new AlignedArray<D>(2*size);
-        planarGroupSize = planar ? size : 1;
-    }
-
-    D* getReals() { return &(*data)[0]; }
-    D* getImaginaries() { return planar ? &(*data)[size] : &(*data)[1]; }
-
-    D* getData() { return &(*data)[0]; }
-
-
-    void setElement(int index, Complex<D> value) {
-        if (planar) {
-            (*data)[index] = value.getReal();
-            (*data)[planarGroupSize + index] = value.getImaginary();
-        } else {
-            (*data)[2*index] = value.getReal();
-            (*data)[2*index + 1] = value.getImaginary();
-        }
-    }
-
-    Complex<D> getElement(int index, Complex<D> value) {
-        Complex<D> result;
-        if (planar) { return Complex<D>((*data)[index], (*data)[planarGroupSize + index]); }
-        else { return Complex<D>((*data)[2*index], (*data)[2*index + 1]); }
-    }
-
-    int getSize() const { return size; }
-    bool getPlanar() const { return planar; }
-
-    ~ComplexArray() { delete data; }
-};
-*/
 #endif

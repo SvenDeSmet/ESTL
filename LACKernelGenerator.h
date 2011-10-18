@@ -6,8 +6,10 @@
  * http://www.gnu.org/licenses/lgpl.html
  */
 
-#ifndef CONTIGUOUSKERNELGENERATOR_H
-#define CONTIGUOUSKERNELGENERATOR_H
+ // Local-and-Contiguous Kernel Generator
+
+#ifndef LACKERNELGENERATOR_H
+#define LACKERNELGENERATOR_H
 
 #include <string>
 #include <sstream>
@@ -16,12 +18,12 @@
 #include <cmath>
 #include <vector>
 #include "Complex.h"
-#include "KernelGenerator.h"
 
-class ContiguousKernelGenerator {
+
+class LACKernelGenerator {
 public:
     static const int swarmStrideLevel = 8;
 
 };
 
-#endif // CONTIGUOUSKERNELGENERATOR_H
+#endif

@@ -1,34 +1,20 @@
-/*
- * The information in this file is
+/* The information in this file is
  * Copyright (C) 2011, Sven De Smet <sven@cubiccarrot.com>
  * and is subject to the terms and conditions of the
  * GNU Lesser General Public License Version 2.1
  * The license text is available from
  * http://www.gnu.org/licenses/lgpl.html
- *
- * Disclaimer: IMPORTANT:
- *
- * The Software is provided on an "AS IS" basis.  Sven De Smet MAKES NO WARRANTIES,
- * EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION THE IMPLIED WARRANTIES OF
- * NON - INFRINGEMENT, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE,
- * REGARDING THE SOFTWARE OR ITS USE AND OPERATION ALONE OR IN COMBINATION WITH YOUR PRODUCTS.
- *
- * IN NO EVENT SHALL Sven De Smet BE LIABLE FOR ANY SPECIAL, INDIRECT, INCIDENTAL OR
- * CONSEQUENTIAL DAMAGES ( INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION ) ARISING IN ANY WAY OUT OF THE USE, REPRODUCTION, MODIFICATION
- * AND / OR DISTRIBUTION OF THE SOFTWARE, HOWEVER CAUSED AND WHETHER
- * UNDER THEORY OF CONTRACT, TORT ( INCLUDING NEGLIGENCE ), STRICT LIABILITY OR
- * OTHERWISE, EVEN IF Sven De Smet HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include "ContiguousKernelGenerator.h"
 #include "stdio.h"
 
 std::string intToStr(int i) { if (i == 0) return "0";
-    char p[(int) (ceil(log(i)/log(10)) + 2)];
+    char* p = new char[(int) (ceil(log((double) i)/log((double) 10)) + 2)];
     sprintf(p, "%i", i);
-    return p;
+    std::string result = p;
+    delete [] p;
+    return result;
 }
 
 int mod(int a, int b) { return (a - b*(a/b)); }

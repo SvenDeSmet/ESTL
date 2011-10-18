@@ -1,25 +1,9 @@
-/*
- * The information in this file is
+/* The information in this file is
  * Copyright (C) 2011, Sven De Smet <sven@cubiccarrot.com>
  * and is subject to the terms and conditions of the
  * GNU Lesser General Public License Version 2.1
  * The license text is available from
  * http://www.gnu.org/licenses/lgpl.html
- *
- * Disclaimer: IMPORTANT:
- *
- * The Software is provided on an "AS IS" basis.  Sven De Smet MAKES NO WARRANTIES,
- * EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION THE IMPLIED WARRANTIES OF
- * NON - INFRINGEMENT, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE,
- * REGARDING THE SOFTWARE OR ITS USE AND OPERATION ALONE OR IN COMBINATION WITH YOUR PRODUCTS.
- *
- * IN NO EVENT SHALL Sven De Smet BE LIABLE FOR ANY SPECIAL, INDIRECT, INCIDENTAL OR
- * CONSEQUENTIAL DAMAGES ( INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION ) ARISING IN ANY WAY OUT OF THE USE, REPRODUCTION, MODIFICATION
- * AND / OR DISTRIBUTION OF THE SOFTWARE, HOWEVER CAUSED AND WHETHER
- * UNDER THEORY OF CONTRACT, TORT ( INCLUDING NEGLIGENCE ), STRICT LIABILITY OR
- * OTHERWISE, EVEN IF Sven De Smet HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #ifndef UOPENCL_H
@@ -28,9 +12,19 @@
 #include <string>
 #define __CL_ENABLE_EXCEPTIONS
 #define CL_LOG_ERRORS stdout
+
+/*
+#ifdef MAC
+#include <OpenCL/opencl.h>
+#endif
+#ifdef LINUX
+#include </opt/AMDAPP/include/CL/opencl.h>
+#endif
+*/
 #include "cl.hpp"
 #include <exception>
 #include <string>
+#include "tests/Timer.h"
 #define xCLErr(result) { if (result != CL_SUCCESS) { printf("Exception"); fflush(stdout); throw CLException(result); } }
 
 class CLException : public std::exception {
@@ -61,7 +55,7 @@ public:
             case CL_OUT_OF_HOST_MEMORY: msg += "CL_OUT_OF_HOST_MEMORY"; break;
         }
         msg += " (CL Exception)]";
-        printf(msg.c_str());
+        printf("%s", msg.c_str());
         fflush(stdout);
         return msg;
     }
@@ -126,7 +120,7 @@ public:
     bool available() {
         cl_bool result;
         xCLErr(device.getInfo<cl_bool>(CL_DEVICE_AVAILABLE, &result));
-        return result;
+        return result == CL_TRUE;
     }
 
     cl_ulong globalMemorySize() {
@@ -253,5 +247,63 @@ public:
     Access(streng iArrayName, streng iIndexExpression) : arrayName(iArrayName), indexExpression(iIndexExpression) { }
     operator streng () { return arrayName + streng("[") + indexExpression + streng("]"); }
 };*/
+
+class OpenCLAlgorithm {
+protected:
+    std::vector<cl::Device> devicesToUse;
+    cl::Context* context;
+    cl::CommandQueue* commandQueue;
+public:
+    Timer* timerComputation;
+    std::vector<Timer> kernelTimers;
+
+    OpenCLAlgorithm() : context(NULL), commandQueue(NULL), timerComputation(NULL) {
+        std::vector<cl::Platform> platforms;
+        xCLErr(cl::Platform::get(&platforms));
+
+//        printf("Platforms: %i", (int) platforms.size()); fflush(stdout);
+//        devicesToUse = new std::vector<cl::Device>();
+        for (int p = 0; p < (int) platforms.size(); ++p) { CLPlatform platform = CLPlatform(platforms[p]);
+//            printf("== Platform %i: %s ==", p, platform.name().c_str());
+            /*printf("Vendor: %s", platform.vendor().c_str());
+            printf("Profile: %s", platform.profile().c_str());
+            printf("Version: %s", platform.version().c_str());
+            printf("Extensions: %s", platform.extensions().c_str());
+*/
+            std::vector<cl::Device> devices;
+//            xCLErr(platforms[p].getDevices(CL_DEVICE_TYPE_CPU, &devices));
+            xCLErr(platforms[p].getDevices(CL_DEVICE_TYPE_GPU, &devices));
+       //     qDe bug("%i devices", (int) devices.size());
+            for (int d = 0; d < (int) devices.size(); ++d) { CLDevice device = CLDevice(devices[d]);
+                printf("[%s %s]", device.vendor().c_str(), device.name().c_str());
+           /*   printf("Global Memory Size: %ld", device.globalMemorySize());
+                printf("Local Memory Size: %ld", device.localMemorySize());
+                printf("Max Compute Units: %i", device.maxComputeUnits());
+                printf("Max Clock Frequency: %i", device.maxClockFrequency());
+                printf("Max Work Group Size: %i", device.maxWorkGroupSize(0));*/
+/*                printf("Preferred Vector Width Float: %i", device.preferredVectorWidthFloat());
+              */  if (device.available()) {
+                   // printf("Available");
+                    devicesToUse.push_back(devices[d]);
+                } //else { printf("Not available"); }
+            }
+        }
+
+        cl_int err;
+// printf("Creating context..."); fflush(stdout);
+        context = new cl::Context(devicesToUse, NULL, NULL, NULL, &err); xCLErr(err);
+//printf("Creating command queue..."); fflush(stdout);
+        commandQueue = new cl::CommandQueue(*context, devicesToUse[0], CL_QUEUE_PROFILING_ENABLE, &err); xCLErr(err);
+    }
+
+    virtual double getTotalComputationFlops(int kernel) { return 0; }
+    virtual std::string getKernelInfo(int kernel) { return ""; }
+
+    ~OpenCLAlgorithm() {
+        kernelTimers.clear();
+        delete context;
+        delete commandQueue;
+    }
+};
 
 #endif // UOPENCL_H

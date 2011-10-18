@@ -1,0 +1,10 @@
+Fedora 13 / AMD APP SDK 2.5 / ATI Mobility Radeon HD 4500 / Qt:
+
+X Error of failed request:  BadRequest (invalid request code or no such operation)
+
+Major opcode of failed request:  135 ()
+  Minor opcode of failed request:  19
+  Serial number of failed request:  8
+  Current serial number in output stream:  8
+
+when retrieving the list of OpenCL platforms.

@@ -1,8 +1,28 @@
+
+# LINUX/AMD:
+#INCLUDEPATH += /opt/AMDAPP/include/
+#DEFINES += LINUX
+#LIBS += /opt/AMDAPP/lib/x86_64/libOpenCL.so
+
+# WINDOWS/AMD
+#INCLUDEPATH += "C:\Program Files (x86)\AMD APP\include"
+#?? DEFINES += _WIN32
+#?? DEFINES += CL_CALLBACK __stdcall
+#LIBS += $$quote(C:/Program Files (x86)/AMD APP/lib/x86_64/libOpenCL.a)
+#LIBS += -L$$quote(C:/Program Files (x86)/AMD APP/lib/x86_64/) -lOpenCL
+
+# MAC
+DEFINES += MAC
+LIBS += -lfftw3f -framework OpenCL
+
+#DEFINES += __CL_ENABLE_EXCEPTIONS
+
 OTHER_FILES += \
     README \
     OpenCL_FFT/ReadMe.txt \
     OpenCL_FFT/param.txt \
-    Measurements.txt
+    Measurements.txt \
+    Issues.txt
 
 HEADERS += \
     uOpenCL.h \
@@ -14,7 +34,6 @@ HEADERS += \
     FFT_MKL.h \
     FFT_FFTW3.h \
     Convolution.h \
-    ContiguousKernelGenerator.h \
     Complex.h \
     cl.hpp \
     OpenCL_FFT/procs.h \
@@ -22,7 +41,11 @@ HEADERS += \
     OpenCL_FFT/fft_base_kernels.h \
     OpenCL_FFT/clFFT.h \
     tests/Timer.h \
-    tests/Test.h
+    tests/Test.h \
+    FFT_OpenCL_LAC.h \
+    KernelGenerator.h \
+    SimpleMath.h \
+    TestCode.h
 
 SOURCES += \
     Complex.cpp \
@@ -33,9 +56,6 @@ SOURCES += \
     tests/Test.cpp \
     main.cpp \
     ContiguousKernelGenerator.cpp
-
-
-LIBS += -lfftw3f -framework OpenCL
 
 
 
