@@ -1,15 +1,21 @@
 #ifndef KERNELGENERATOR_H
 #define KERNELGENERATOR_H
 
+// Utility classes for kernel generators
+
 #include <string>
+#include <sstream>
+#define _USE_MATH_DEFINES
+#include "math.h"
 
 typedef std::string streng;
 
-std::string intToStr(int i);
+streng intToStr(int i);
 
 class Expression {
 public:
     virtual streng getRepresentation() = 0;
+    streng operator ()() { return getRepresentation(); }
 };
 
 class Value : public Expression {
@@ -20,7 +26,23 @@ public:
     Value() { }
 
     virtual streng getRepresentation() { return representation; }
-    streng operator()() { return getRepresentation(); }
+//    streng operator()() { return getRepresentation(); }
+};
+
+class KomplexMath {
+public:
+    static streng getDeclarations() {
+        std::stringstream result; result << "\
+        typedef float T;\n\
+        struct Komplex { T r, i; };\n\
+        typedef struct Komplex K;\n\
+        inline K komplex(T iR, T iI);       inline K komplex(T iR, T iI) { K k; k.r = iR; k.i = iI; return k; };\n\
+        inline K unit(int n, int d);\n\
+        inline K mul(const K a, const K b); inline K mul(const K a, const K b) { return komplex(a.r * b.r - a.i * b.i, a.r * b.i + a.i * b.r); };\n\
+        inline K add(const K a, const K b); inline K add(const K a, const K b) { return komplex(a.r + b.r, a.i + b.i); }\n\
+        inline K unit(int n, int d) { const float frac_PI2_d = " << (2*M_PI) << "f/d; return komplex(native_cos(frac_PI2_d*n), native_sin(frac_PI2_d*n)); };\n;";
+        return result.str();
+    }
 };
 
 class KomplexUnit : public Expression {
@@ -39,6 +61,24 @@ public:
     }
 
     virtual streng getRepresentation() { return toFloatString(); }
+};
+
+class IntegerDivision : public Expression {
+private:
+    streng numerator;
+    int denominator;
+    int bits;
+public:
+    IntegerDivision(streng iNumerator, int iDenominator, int iBits = 24) : numerator(iNumerator), denominator(iDenominator), bits(iBits) { }
+
+    virtual streng getRepresentation() { if (denominator == 1) return numerator;//return numerator + streng("/") + intToStr(denominator);
+        switch (bits) {
+            case 32: return streng("(((long) (") + numerator + streng("))*") + intToStr((((1 << bits) + (denominator - 1))/denominator)) + streng(") >> ") + intToStr(bits);
+            case 16: return streng("(((int) (") + numerator + streng("))*") + intToStr((((1 << bits) + (denominator - 1))/denominator)) + streng(") >> ") + intToStr(bits);
+            case 8: return streng("(((short int) (") + numerator + streng("))*") + intToStr((((1 << bits) + (denominator - 1))/denominator)) + streng(") >> ") + intToStr(bits);
+            default: return streng("(((long) (") + numerator + streng("))*") + intToStr((((1 << bits) + (denominator - 1))/denominator)) + streng(") >> ") + intToStr(bits);
+        }
+    }
 };
 
 int mod(int a, int b); //{ return (a - b*(a/b)); }
@@ -101,18 +141,19 @@ public:
         if (inRegisters) { result += type + streng(" ");
             for (int l = 0; l < length; ++l) {
                 if (l > 0) result += ", ";
-                result += name + intToStr(l);
+                result += name + "_" + intToStr(l);
             }
-        } else {
-            result = type + streng(" ") + name + streng("[") + intToStr(length) + streng("]");
-        }
+        } else { result = type + streng(" ") + name + streng("[") + intToStr(length) + streng("]"); }
+
         return result + streng(";");
     }
 
     Value getItem(int ix) {
-        if (inRegisters) { return name + intToStr(ix); }
+        if (inRegisters) { return name + "_" + intToStr(ix); }
         else { return name + streng("[") + intToStr(ix) + streng("]"); }
     }
+
+    Value operator [] (int ix) { return getItem(ix); }
 };
 
-#endif // KERNELGENERATOR_H
+#endif

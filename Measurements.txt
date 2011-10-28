@@ -53,7 +53,6 @@ Original Apple OpenCL FFT as implemented through FFT_OpenCL_A with interleaved f
 @@@ m == 22: [Device: GeForce 9400, Vendor: NVIDIA] 2.050385 GFlops/s
 @@@ m == 23: [Device: GeForce 9400, Vendor: NVIDIA] 2.113647 GFlops/s
 
-
 First full-custom OpenCL implementation:
 
 @@@ m == 1: [Device: GeForce 9400, Vendor: NVIDIA] 0.000004 GFlops/s (0.000005 GFlops/s)
@@ -446,45 +445,193 @@ Without the arithmetic of the FFT (incorrect results):
 
 LAC version, without improved locality:
 
-@@@ m == 3: [NVIDIA GeForce 9400]M-level 1: ([2] [2] [2] ) 0.00 Gfs (0.01 Gfs)
+@@@ m == 3: [NVIDIA GeForce 9400] 0.00 Gfs (0.01 Gfs)
 [K1 (3): 0.01 Gfs (100%)](Total: 0.01 Gfs)
-@@@ m == 4: [NVIDIA GeForce 9400]M-level 1: ([2] [2] [2] [2] ) 0.00 Gfs (0.01 Gfs)
+@@@ m == 4: [NVIDIA GeForce 9400] 0.00 Gfs (0.01 Gfs)
 [K1 (4): 0.01 Gfs (100%)](Total: 0.01 Gfs)
-@@@ m == 5: [NVIDIA GeForce 9400]M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] ) 0.00 Gfs (0.02 Gfs)
+@@@ m == 5: [NVIDIA GeForce 9400] 0.00 Gfs (0.02 Gfs)
 [K1 (4): 0.03 Gfs (79%)][K2 (1): 0.03 Gfs (21%)](Total: 0.03 Gfs)
-@@@ m == 6: [NVIDIA GeForce 9400]M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] ) 0.00 Gfs (0.04 Gfs)
+@@@ m == 6: [NVIDIA GeForce 9400] 0.00 Gfs (0.04 Gfs)
 [K1 (4): 0.06 Gfs (71%)][K2 (2): 0.07 Gfs (29%)](Total: 0.06 Gfs)
-@@@ m == 7: [NVIDIA GeForce 9400]M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] ) 0.01 Gfs (0.08 Gfs)
+@@@ m == 7: [NVIDIA GeForce 9400] 0.01 Gfs (0.08 Gfs)
 [K1 (4): 0.12 Gfs (55%)][K2 (3): 0.11 Gfs (45%)](Total: 0.12 Gfs)
-@@@ m == 8: [NVIDIA GeForce 9400]M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] ) 0.01 Gfs (0.14 Gfs)
+@@@ m == 8: [NVIDIA GeForce 9400] 0.01 Gfs (0.14 Gfs)
 [K1 (4): 0.23 Gfs (42%)][K2 (4): 0.16 Gfs (58%)](Total: 0.19 Gfs)
-@@@ m == 9: [NVIDIA GeForce 9400]M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] ) 0.03 Gfs (0.23 Gfs)
+@@@ m == 9: [NVIDIA GeForce 9400] 0.03 Gfs (0.23 Gfs)
 [K1 (4): 0.43 Gfs (36%)][K2 (4): 0.29 Gfs (53%)][K3 (1): 0.36 Gfs (11%)](Total: 0.35 Gfs)
-@@@ m == 10: [NVIDIA GeForce 9400]M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] ) 0.06 Gfs (0.48 Gfs)
+@@@ m == 10: [NVIDIA GeForce 9400] 0.06 Gfs (0.48 Gfs)
 [K1 (4): 0.85 Gfs (34%)][K2 (4): 0.61 Gfs (47%)][K3 (2): 0.75 Gfs (19%)](Total: 0.72 Gfs)
-@@@ m == 11: [NVIDIA GeForce 9400]M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] ) 0.12 Gfs (0.86 Gfs)
+@@@ m == 11: [NVIDIA GeForce 9400] 0.12 Gfs (0.86 Gfs)
 [K1 (4): 1.56 Gfs (28%)][K2 (4): 1.27 Gfs (34%)][K3 (3): 0.87 Gfs (38%)](Total: 1.20 Gfs)
-@@@ m == 12: [NVIDIA GeForce 9400]M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] ) 0.15 Gfs (1.10 Gfs)
+@@@ m == 12: [NVIDIA GeForce 9400] 0.15 Gfs (1.10 Gfs)
 [K1 (4): 3.21 Gfs (14%)][K2 (4): 2.68 Gfs (17%)][K3 (4): 0.64 Gfs (70%)](Total: 1.33 Gfs)
-@@@ m == 13: [NVIDIA GeForce 9400]M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] ) 0.32 Gfs (1.11 Gfs)
+@@@ m == 13: [NVIDIA GeForce 9400] 0.32 Gfs (1.11 Gfs)
 [K1 (4): 3.24 Gfs (14%)][K2 (4): 2.84 Gfs (16%)][K3 (4): 0.88 Gfs (51%)][K4 (1): 0.58 Gfs (19%)](Total: 1.46 Gfs)
-@@@ m == 14: [NVIDIA GeForce 9400]M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] ) 0.53 Gfs (1.49 Gfs)
+@@@ m == 14: [NVIDIA GeForce 9400] 0.53 Gfs (1.49 Gfs)
 [K1 (4): 4.38 Gfs (13%)][K2 (4): 3.37 Gfs (17%)][K3 (4): 1.51 Gfs (37%)][K4 (2): 0.82 Gfs (34%)](Total: 1.95 Gfs)
-@@@ m == 15: [NVIDIA GeForce 9400]M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] ) 0.72 Gfs (1.70 Gfs)
+@@@ m == 15: [NVIDIA GeForce 9400] 0.72 Gfs (1.70 Gfs)
 [K1 (4): 4.39 Gfs (12%)][K2 (4): 2.82 Gfs (19%)][K3 (4): 2.53 Gfs (21%)][K4 (3): 0.81 Gfs (49%)](Total: 1.97 Gfs)
-@@@ m == 16: [NVIDIA GeForce 9400]M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] ) 0.85 Gfs (1.46 Gfs)
+@@@ m == 16: [NVIDIA GeForce 9400] 0.85 Gfs (1.46 Gfs)
 [K1 (4): 3.71 Gfs (10%)][K2 (4): 3.71 Gfs (10%)][K3 (4): 3.82 Gfs (10%)][K4 (4): 0.55 Gfs (69%)](Total: 1.53 Gfs)
-@@@ m == 17: [NVIDIA GeForce 9400]M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] ) 1.18 Gfs (2.06 Gfs)
+@@@ m == 17: [NVIDIA GeForce 9400] 1.18 Gfs (2.06 Gfs)
 [K1 (4): 4.33 Gfs (12%)][K2 (4): 3.63 Gfs (14%)][K3 (4): 3.83 Gfs (13%)][K4 (4): 1.09 Gfs (46%)][K5 (1): 0.80 Gfs (16%)](Total: 2.13 Gfs)
-@@@ m == 18: [NVIDIA GeForce 9400]M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] ) 1.55 Gfs (2.43 Gfs)
+@@@ m == 18: [NVIDIA GeForce 9400] 1.55 Gfs (2.43 Gfs)
 [K1 (4): 4.29 Gfs (13%)][K2 (4): 3.79 Gfs (15%)][K3 (4): 3.79 Gfs (15%)][K4 (4): 1.89 Gfs (29%)][K5 (2): 0.96 Gfs (29%)](Total: 2.49 Gfs)
-@@@ m == 19: [NVIDIA GeForce 9400]M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] ) 1.58 Gfs (2.30 Gfs)
+@@@ m == 19: [NVIDIA GeForce 9400] 1.58 Gfs (2.30 Gfs)
 [K1 (4): 4.25 Gfs (11%)][K2 (4): 3.80 Gfs (13%)][K3 (4): 3.80 Gfs (13%)][K4 (4): 3.02 Gfs (16%)][K5 (3): 0.79 Gfs (47%)](Total: 2.32 Gfs)
-@@@ m == 20: [NVIDIA GeForce 9400]M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] ) 1.33 Gfs (1.77 Gfs)
+@@@ m == 20: [NVIDIA GeForce 9400] 1.33 Gfs (1.77 Gfs)
 [K1 (4): 4.31 Gfs (8%)][K2 (4): 3.85 Gfs (9%)][K3 (4): 3.79 Gfs (9%)][K4 (4): 3.82 Gfs (9%)][K5 (4): 0.55 Gfs (64%)](Total: 1.77 Gfs)
-@@@ m == 21: [NVIDIA GeForce 9400]M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] ) 1.63 Gfs (2.20 Gfs)
+@@@ m == 21: [NVIDIA GeForce 9400] 1.63 Gfs (2.20 Gfs)
 [K1 (4): 4.14 Gfs (10%)][K2 (4): 3.51 Gfs (12%)][K3 (4): 3.67 Gfs (11%)][K4 (4): 3.66 Gfs (11%)][K5 (4): 1.02 Gfs (41%)][K6 (1): 0.75 Gfs (14%)](Total: 2.20 Gfs)
-@@@ m == 22: [NVIDIA GeForce 9400]M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] ) 1.86 Gfs (2.58 Gfs)
+@@@ m == 22: [NVIDIA GeForce 9400] 1.86 Gfs (2.58 Gfs)
 [K1 (4): 4.18 Gfs (11%)][K2 (4): 3.52 Gfs (13%)][K3 (4): 3.75 Gfs (13%)][K4 (4): 3.78 Gfs (12%)][K5 (4): 1.83 Gfs (26%)][K6 (2): 0.95 Gfs (25%)](Total: 2.59 Gfs)
-@@@ m == 23: [NVIDIA GeForce 9400]M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] [2] )M-level 1: ([2] [2] [2] ) 1.71 Gfs (2.33 Gfs)
+@@@ m == 23: [NVIDIA GeForce 9400] 1.71 Gfs (2.33 Gfs)
 [K1 (4): 4.21 Gfs (10%)][K2 (4): 3.47 Gfs (12%)][K3 (4): 3.31 Gfs (12%)][K4 (4): 3.35 Gfs (12%)][K5 (4): 2.96 Gfs (14%)][K6 (3): 0.75 Gfs (41%)](Total: 2.33 Gfs)
+
+
+Contiguous version, CPU:
+
+@@@ m == 3: [Intel Intel(R) Core(TM)2 Duo CPU     P7550  @ 2.26GHz] 0.00 Gfs (0.01 Gfs)
+[K1 (3): 0.01 Gfs (100%)](Total: 0.01 Gfs)
+@@@ m == 4: [Intel Intel(R) Core(TM)2 Duo CPU     P7550  @ 2.26GHz] 0.00 Gfs (0.04 Gfs)
+[K1 (4): 0.04 Gfs (100%)](Total: 0.04 Gfs)
+@@@ m == 5: [Intel Intel(R) Core(TM)2 Duo CPU     P7550  @ 2.26GHz] 0.01 Gfs (0.06 Gfs)
+[K1 (4): 0.10 Gfs (85%)][K2 (1): 0.13 Gfs (15%)](Total: 0.10 Gfs)
+@@@ m == 6: [Intel Intel(R) Core(TM)2 Duo CPU     P7550  @ 2.26GHz] 0.02 Gfs (0.14 Gfs)
+[K1 (4): 0.19 Gfs (74%)][K2 (2): 0.27 Gfs (26%)](Total: 0.21 Gfs)
+@@@ m == 7: [Intel Intel(R) Core(TM)2 Duo CPU     P7550  @ 2.26GHz] 0.05 Gfs (0.26 Gfs)
+[K1 (4): 0.36 Gfs (60%)][K2 (3): 0.40 Gfs (40%)](Total: 0.38 Gfs)
+@@@ m == 8: [Intel Intel(R) Core(TM)2 Duo CPU     P7550  @ 2.26GHz] 0.12 Gfs (0.46 Gfs)
+[K1 (4): 0.54 Gfs (52%)][K2 (4): 0.59 Gfs (48%)](Total: 0.56 Gfs)
+@@@ m == 9: [Intel Intel(R) Core(TM)2 Duo CPU     P7550  @ 2.26GHz] 0.24 Gfs (0.55 Gfs)
+[K1 (4): 0.82 Gfs (36%)][K2 (4): 0.84 Gfs (35%)][K3 (1): 0.24 Gfs (30%)](Total: 0.65 Gfs)
+@@@ m == 10: [Intel Intel(R) Core(TM)2 Duo CPU     P7550  @ 2.26GHz] 0.37 Gfs (0.70 Gfs)
+[K1 (4): 0.87 Gfs (36%)][K2 (4): 0.89 Gfs (35%)][K3 (2): 0.53 Gfs (29%)](Total: 0.78 Gfs)
+@@@ m == 11: [Intel Intel(R) Core(TM)2 Duo CPU     P7550  @ 2.26GHz] 0.52 Gfs (0.74 Gfs)
+[K1 (4): 0.92 Gfs (30%)][K2 (4): 0.91 Gfs (31%)][K3 (3): 0.54 Gfs (39%)](Total: 0.77 Gfs)
+@@@ m == 12: [Intel Intel(R) Core(TM)2 Duo CPU     P7550  @ 2.26GHz] 0.99 Gfs (1.38 Gfs)
+[K1 (4): 1.44 Gfs (33%)][K2 (4): 1.45 Gfs (33%)][K3 (4): 1.44 Gfs (33%)](Total: 1.44 Gfs)
+@@@ m == 13: [Intel Intel(R) Core(TM)2 Duo CPU     P7550  @ 2.26GHz] 1.14 Gfs (1.40 Gfs)
+[K1 (4): 1.56 Gfs (29%)][K2 (4): 1.59 Gfs (28%)][K3 (4): 1.59 Gfs (28%)][K4 (1): 0.71 Gfs (16%)](Total: 1.44 Gfs)
+@@@ m == 14: [Intel Intel(R) Core(TM)2 Duo CPU     P7550  @ 2.26GHz] 1.37 Gfs (1.55 Gfs)
+[K1 (4): 1.71 Gfs (26%)][K2 (4): 1.74 Gfs (26%)][K3 (4): 1.68 Gfs (27%)][K4 (2): 1.07 Gfs (21%)](Total: 1.57 Gfs)
+@@@ m == 15: [Intel Intel(R) Core(TM)2 Duo CPU     P7550  @ 2.26GHz] 1.42 Gfs (1.55 Gfs)
+[K1 (4): 1.67 Gfs (25%)][K2 (4): 1.71 Gfs (24%)][K3 (4): 1.62 Gfs (26%)][K4 (3): 1.25 Gfs (25%)](Total: 1.56 Gfs)
+@@@ m == 16: [Intel Intel(R) Core(TM)2 Duo CPU     P7550  @ 2.26GHz] 1.62 Gfs (1.76 Gfs)
+[K1 (4): 1.74 Gfs (25%)][K2 (4): 1.81 Gfs (25%)][K3 (4): 1.77 Gfs (25%)][K4 (4): 1.77 Gfs (25%)](Total: 1.77 Gfs)
+@@@ m == 17: [Intel Intel(R) Core(TM)2 Duo CPU     P7550  @ 2.26GHz] 1.33 Gfs (1.50 Gfs)
+[K1 (4): 1.44 Gfs (25%)][K2 (4): 1.63 Gfs (22%)][K3 (4): 1.66 Gfs (21%)][K4 (4): 1.70 Gfs (21%)][K5 (1): 0.78 Gfs (11%)](Total: 1.51 Gfs)
+@@@ m == 18: [Intel Intel(R) Core(TM)2 Duo CPU     P7550  @ 2.26GHz] 1.19 Gfs (1.38 Gfs)
+[K1 (4): 1.38 Gfs (22%)][K2 (4): 1.46 Gfs (21%)][K3 (4): 1.47 Gfs (21%)][K4 (4): 1.48 Gfs (21%)][K5 (2): 1.03 Gfs (15%)](Total: 1.38 Gfs)
+@@@ m == 19: [Intel Intel(R) Core(TM)2 Duo CPU     P7550  @ 2.26GHz] 1.20 Gfs (1.38 Gfs)
+[K1 (4): 1.40 Gfs (21%)][K2 (4): 1.42 Gfs (20%)][K3 (4): 1.46 Gfs (20%)][K4 (4): 1.45 Gfs (20%)][K5 (3): 1.18 Gfs (19%)](Total: 1.39 Gfs)
+@@@ m == 20: [Intel Intel(R) Core(TM)2 Duo CPU     P7550  @ 2.26GHz] 1.26 Gfs (1.46 Gfs)
+[K1 (4): 1.42 Gfs (20%)][K2 (4): 1.48 Gfs (20%)][K3 (4): 1.49 Gfs (20%)][K4 (4): 1.42 Gfs (21%)][K5 (4): 1.48 Gfs (20%)](Total: 1.46 Gfs)
+@@@ m == 21: [Intel Intel(R) Core(TM)2 Duo CPU     P7550  @ 2.26GHz] 1.20 Gfs (1.36 Gfs)
+[K1 (4): 1.36 Gfs (19%)][K2 (4): 1.45 Gfs (18%)][K3 (4): 1.48 Gfs (18%)][K4 (4): 1.43 Gfs (18%)][K5 (4): 1.44 Gfs (18%)][K6 (1): 0.70 Gfs (9%)](Total: 1.36 Gfs)
+@@@ m == 22: [Intel Intel(R) Core(TM)2 Duo CPU     P7550  @ 2.26GHz] 1.12 Gfs (1.26 Gfs)
+[K1 (4): 1.22 Gfs (19%)][K2 (4): 1.33 Gfs (17%)][K3 (4): 1.39 Gfs (17%)][K4 (4): 1.33 Gfs (17%)][K5 (4): 1.28 Gfs (18%)][K6 (2): 0.93 Gfs (12%)](Total: 1.26 Gfs)
+@@@ m == 23: [Intel Intel(R) Core(TM)2 Duo CPU     P7550  @ 2.26GHz] 1.19 Gfs (1.36 Gfs)
+[K1 (4): 1.17 Gfs (20%)][K2 (4): 1.42 Gfs (17%)][K3 (4): 1.48 Gfs (16%)][K4 (4): 1.46 Gfs (16%)][K5 (4): 1.44 Gfs (16%)][K6 (3): 1.21 Gfs (15%)](Total: 1.36 Gfs)
+
+FFTW3 @ [Intel Intel(R) Core(TM)2 Duo CPU     P7550  @ 2.26GHz]:
+
+@@@ m == 3:  0.05 Gfs (-1.00 Gfs)
+@@@ m == 4:  1.12 Gfs (-1.00 Gfs)
+@@@ m == 5:  1.91 Gfs (-1.00 Gfs)
+@@@ m == 6:  4.99 Gfs (-1.00 Gfs)
+@@@ m == 7:  6.17 Gfs (-1.00 Gfs)
+@@@ m == 8:  6.10 Gfs (-1.00 Gfs)
+@@@ m == 9:  6.68 Gfs (-1.00 Gfs)
+@@@ m == 10:  6.53 Gfs (-1.00 Gfs)
+@@@ m == 11:  7.04 Gfs (-1.00 Gfs)
+@@@ m == 12:  5.77 Gfs (-1.00 Gfs)
+@@@ m == 13:  4.93 Gfs (-1.00 Gfs)
+@@@ m == 14:  5.06 Gfs (-1.00 Gfs)
+@@@ m == 15:  4.95 Gfs (-1.00 Gfs)
+@@@ m == 16:  4.71 Gfs (-1.00 Gfs)
+@@@ m == 17:  4.77 Gfs (-1.00 Gfs)
+@@@ m == 18:  3.20 Gfs (-1.00 Gfs)
+@@@ m == 19:  1.63 Gfs (-1.00 Gfs)
+@@@ m == 20:  1.14 Gfs (-1.00 Gfs)
+@@@ m == 21:  1.12 Gfs (-1.00 Gfs)
+@@@ m == 22:  1.05 Gfs (-1.00 Gfs)
+@@@ m == 23:  1.06 Gfs (-1.00 Gfs)
+
+
+Windows 7 on AMD Mobility HD4500.  Apple-based code (FFT A) generates an assertion failure for low m-values.
+Interleaved format:
+
+@@@ OpenCL FFT A (interleaved) @@@ m == 13: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 0.19 Gfs
+@@@ OpenCL FFT A (interleaved) @@@ m == 14: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 0.32 Gfs
+@@@ OpenCL FFT A (interleaved) @@@ m == 15: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 0.42 Gfs
+@@@ OpenCL FFT A (interleaved) @@@ m == 16: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 0.64 Gfs
+@@@ OpenCL FFT A (interleaved) @@@ m == 17: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 0.90 Gfs
+@@@ OpenCL FFT A (interleaved) @@@ m == 18: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 1.12 Gfs
+@@@ OpenCL FFT A (interleaved) @@@ m == 19: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 1.19 Gfs
+@@@ OpenCL FFT A (interleaved) @@@ m == 20: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 1.17 Gfs
+@@@ OpenCL FFT A (interleaved) @@@ m == 21: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 1.15 Gfs
+@@@ OpenCL FFT A (interleaved) @@@ m == 22: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 1.17 Gfs
+@@@ OpenCL FFT A (interleaved) @@@ m == 23: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 0.91 Gfs
+
+, non-interleaved format (full plannar):
+
+@@@ OpenCL FFT A (non-interleaved) @@@ m == 13: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 0.27 Gfs
+@@@ OpenCL FFT A (non-interleaved) @@@ m == 14: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 0.21 Gfs
+@@@ OpenCL FFT A (non-interleaved) @@@ m == 15: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 0.32 Gfs
+@@@ OpenCL FFT A (non-interleaved) @@@ m == 16: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 0.45 Gfs
+@@@ OpenCL FFT A (non-interleaved) @@@ m == 17: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 0.76 Gfs
+@@@ OpenCL FFT A (non-interleaved) @@@ m == 18: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 0.75 Gfs
+@@@ OpenCL FFT A (non-interleaved) @@@ m == 19: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 0.78 Gfs
+@@@ OpenCL FFT A (non-interleaved) @@@ m == 20: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 0.77 Gfs
+@@@ OpenCL FFT A (non-interleaved) @@@ m == 21: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 0.68 Gfs
+@@@ OpenCL FFT A (non-interleaved) @@@ m == 22: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 0.71 Gfs
+@@@ OpenCL FFT A (non-interleaved) @@@ m == 23: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 0.76 Gfs
+
+Our custom, contiguous version:
+
+@@@ Contiguous OpenCL FFT @@@ m == 2: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 0.00 Gfs (0.00 Gfs)
+[K1 (2): 0.00 Gfs (100%)](Total: 0.00 Gfs)
+@@@ Contiguous OpenCL FFT @@@ m == 3: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 0.00 Gfs (0.01 Gfs)
+[K1 (3): 0.01 Gfs (100%)](Total: 0.01 Gfs)
+@@@ Contiguous OpenCL FFT @@@ m == 4: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 0.00 Gfs (0.01 Gfs)
+[K1 (4): 0.01 Gfs (100%)](Total: 0.01 Gfs)
+@@@ Contiguous OpenCL FFT @@@ m == 5: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 0.00 Gfs (0.00 Gfs)
+[K1 (4): 0.03 Gfs (71%)][K2 (1): 0.02 Gfs (29%)](Total: 0.02 Gfs)
+@@@ Contiguous OpenCL FFT @@@ m == 6: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 0.00 Gfs (0.00 Gfs)
+[K1 (4): 0.05 Gfs (69%)][K2 (2): 0.06 Gfs (31%)](Total: 0.05 Gfs)
+@@@ Contiguous OpenCL FFT @@@ m == 7: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 0.00 Gfs (0.00 Gfs)
+[K1 (4): 0.07 Gfs (60%)][K2 (3): 0.08 Gfs (40%)](Total: 0.07 Gfs)
+@@@ Contiguous OpenCL FFT @@@ m == 8: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 0.00 Gfs (0.01 Gfs)
+[K1 (4): 0.19 Gfs (50%)][K2 (4): 0.18 Gfs (50%)](Total: 0.18 Gfs)
+@@@ Contiguous OpenCL FFT @@@ m == 9: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 0.01 Gfs (0.03 Gfs)
+[K1 (4): 0.39 Gfs (39%)][K2 (4): 0.36 Gfs (43%)][K3 (1): 0.21 Gfs (19%)](Total: 0.34 Gfs)
+@@@ Contiguous OpenCL FFT @@@ m == 10: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 0.03 Gfs (0.07 Gfs)
+[K1 (4): 0.47 Gfs (39%)][K2 (4): 0.46 Gfs (40%)][K3 (2): 0.43 Gfs (21%)](Total: 0.45 Gfs)
+@@@ Contiguous OpenCL FFT @@@ m == 11: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 0.10 Gfs (0.27 Gfs)
+[K1 (4): 1.56 Gfs (34%)][K2 (4): 1.50 Gfs (35%)][K3 (3): 1.29 Gfs (31%)](Total: 1.46 Gfs)
+@@@ Contiguous OpenCL FFT @@@ m == 12: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 0.08 Gfs (0.45 Gfs)
+[K1 (4): 1.70 Gfs (27%)][K2 (4): 1.47 Gfs (32%)][K3 (4): 1.14 Gfs (41%)](Total: 1.40 Gfs)
+@@@ Contiguous OpenCL FFT @@@ m == 13: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 0.16 Gfs (0.61 Gfs)
+[K1 (4): 2.07 Gfs (22%)][K2 (4): 1.83 Gfs (24%)][K3 (4): 1.38 Gfs (32%)][K4 (1): 0.52 Gfs (21%)](Total: 1.45 Gfs)
+@@@ Contiguous OpenCL FFT @@@ m == 14: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 0.30 Gfs (1.10 Gfs)
+[K1 (4): 2.55 Gfs (24%)][K2 (4): 2.45 Gfs (25%)][K3 (4): 2.16 Gfs (28%)][K4 (2): 1.30 Gfs (23%)](Total: 2.12 Gfs)
+@@@ Contiguous OpenCL FFT @@@ m == 15: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 0.47 Gfs (1.71 Gfs)
+[K1 (4): 3.57 Gfs (24%)][K2 (4): 3.58 Gfs (24%)][K3 (4): 3.40 Gfs (25%)][K4 (3): 2.39 Gfs (27%)](Total: 3.21 Gfs)
+@@@ Contiguous OpenCL FFT @@@ m == 16: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 0.70 Gfs (2.15 Gfs)
+[K1 (4): 4.09 Gfs (21%)][K2 (4): 4.09 Gfs (21%)][K3 (4): 4.05 Gfs (22%)][K4 (4): 2.44 Gfs (36%)](Total: 3.49 Gfs)
+@@@ Contiguous OpenCL FFT @@@ m == 17: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 1.08 Gfs (2.37 Gfs)
+[K1 (4): 4.58 Gfs (18%)][K2 (4): 4.59 Gfs (18%)][K3 (4): 4.62 Gfs (18%)][K4 (4): 2.64 Gfs (31%)][K5 (1): 1.22 Gfs (17%)](Total: 3.44 Gfs)
+@@@ Contiguous OpenCL FFT @@@ m == 18: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 1.69 Gfs (3.59 Gfs)
+[K1 (4): 5.26 Gfs (19%)][K2 (4): 5.28 Gfs (19%)][K3 (4): 5.31 Gfs (19%)][K4 (4): 3.80 Gfs (26%)][K5 (2): 2.83 Gfs (18%)](Total: 4.46 Gfs)
+@@@ Contiguous OpenCL FFT @@@ m == 19: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 2.36 Gfs (4.59 Gfs)
+[K1 (4): 5.83 Gfs (19%)][K2 (4): 5.84 Gfs (19%)][K3 (4): 5.95 Gfs (18%)][K4 (4): 5.83 Gfs (19%)][K5 (3): 3.14 Gfs (26%)](Total: 5.16 Gfs)
+@@@ Contiguous OpenCL FFT @@@ m == 20: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 2.55 Gfs (4.52 Gfs)
+[K1 (4): 6.02 Gfs (16%)][K2 (4): 6.18 Gfs (16%)][K3 (4): 6.18 Gfs (16%)][K4 (4): 6.18 Gfs (16%)][K5 (4): 2.57 Gfs (37%)](Total: 4.81 Gfs)
+@@@ Contiguous OpenCL FFT @@@ m == 21: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 2.55 Gfs (4.31 Gfs)
+[K1 (4): 6.20 Gfs (14%)][K2 (4): 6.20 Gfs (14%)][K3 (4): 6.20 Gfs (14%)][K4 (4): 6.20 Gfs (14%)][K5 (4): 2.74 Gfs (31%)][K6 (1): 1.55 Gfs (14%)](Total: 4.48 Gfs)
+@@@ Contiguous OpenCL FFT @@@ m == 22: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 3.01 Gfs (5.07 Gfs)
+[K1 (4): 6.21 Gfs (15%)][K2 (4): 6.21 Gfs (15%)][K3 (4): 6.21 Gfs (15%)][K4 (4): 6.21 Gfs (15%)][K5 (4): 4.00 Gfs (24%)][K6 (2): 3.11 Gfs (15%)](Total: 5.22 Gfs)
+@@@ Contiguous OpenCL FFT @@@ m == 23: [Advanced Micro Devices, Inc. OpenCL 1.1 AMD-APP-SDK-v2.5 (732.1): Advanced Micro Devices, Inc. ATI RV710] 3.25 Gfs (5.38 Gfs)
+[K1 (4): 6.22 Gfs (15%)][K2 (4): 6.22 Gfs (15%)][K3 (4): 6.22 Gfs (15%)][K4 (4): 6.22 Gfs (15%)][K5 (4): 5.99 Gfs (16%)][K6 (3): 3.17 Gfs (23%)](Total: 5.49 Gfs)
+

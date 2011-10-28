@@ -11,5 +11,6 @@ static inline int ceilog(int n, int R) {
 }
 
 static inline int ceilint(int n, int R) { return R*((n + (R - 1))/R); }
+static inline int ceildiv(int n, int R) { return ((n + (R - 1))/R); }
 
 #endif // SIMPLEMATH_H

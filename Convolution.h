@@ -97,10 +97,11 @@ public:
         int height = nextPowerOf2(dataToConvolve->getHeight() + convolutionKernel->getHeight() - 1);
 
         //FFTFactory<T>* fftFactory = new FFTFactorySpecific<FFT_FFTW3<T> >();
-        FFTFactory<T>* fftFactory = new FFTFactorySpecific<FFT_OpenCL_A<T> >();
-        FFT2D<T>* fft2DData = new FFT2D<T>(width, height, fftFactory, false);
-        FFT2D<T>* fft2DConvolutionKernel = new FFT2D<T>(width, height, fftFactory, false);
-        FFT2D<T>* fft2DDataInv = new FFT2D<T>(width, height, fftFactory, true);
+		typedef float S;
+        FFTFactory<S>* fftFactory = new FFTFactorySpecific<FFT_OpenCL_Contiguous<S> >();
+        FFT2D<S>* fft2DData = new FFT2D<S>(width, height, fftFactory, false);
+        FFT2D<S>* fft2DConvolutionKernel = new FFT2D<S>(width, height, fftFactory, false);
+        FFT2D<S>* fft2DDataInv = new FFT2D<S>(width, height, fftFactory, true);
 
         for (int y = 0; y < height; ++y) {
             for (int x = 0; x < width; ++x) {

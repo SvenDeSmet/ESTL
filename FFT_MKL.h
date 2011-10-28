@@ -8,10 +8,10 @@
 
 #ifndef FFT_MKL_H
 #define FFT_MKL_H
+#ifdef USE_MKL
 
 #include "FFT.h"
 
-#ifdef USE_MKL
 template <class D> class FFT_MKL : public FFT<D> {
 private:
     DFTI_DESCRIPTOR_HANDLE h;
@@ -33,6 +33,6 @@ public:
         fftwf_destroy_plan(p1);
     }
 };
-#endif
 
+#endif
 #endif // FFT_MKL_H

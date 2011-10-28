@@ -16,9 +16,9 @@
 
 #include "uOpenCL.h"
 #include "FFT.h"
-#include "ContiguousKernelGenerator.h"
 #include "tests/Timer.h"
 #include <sys/types.h>
+#include "KernelGenerator.h"
 
 #define DBG(a) a
 
@@ -38,19 +38,21 @@ private:
     std::vector<streng> src;
     DataInterfaceType* arrayDataInterface;
 public:
+    static streng getName() { return "Contiguous OpenCL FFT"; }
+
     std::vector<int> AGs, BGs, NGs;
 
     FFT_OpenCL_Contiguous(int iSize, bool iForward = true, int iBatchCount = 1) : FFT<D>(iSize, iBatchCount), OpenCLAlgorithm(), forward(iForward) {
         this->dataInterface = arrayDataInterface = new DataInterfaceType(this->batchCount*this->size);
 
-        int memReq = this->size*sizeof(clFFT_Complex)*this->batchCount;
+        int memReq = this->size*2*sizeof(D)*this->batchCount;
         if(memReq >= CLDevice(devicesToUse[0]).globalMemorySize()) { printf("Insufficient global memory"); } // throw exception
 
         data[0] = new ComplexArrayCL<float>(*context, arrayDataInterface->in);
         data[1] = new ComplexArrayCL<float>(*context, arrayDataInterface->out);
 
         if (this->size > 1) {
-            int defaultBG = 2;
+            int defaultBG = 16;
             int logBGSize = ceilog(this->size, defaultBG);
             int AG = 1;
             int NG = 1;
@@ -60,12 +62,12 @@ public:
 //                int BG = (qG == 1) ? this->size/pow(BG, (logBGSize - 1)) : defaultBG;
                 int BG = mIn(defaultBG, this->size/NG);
                 NG *= BG;
-                printf("{%i}", BG);
+                //printf("{%i}", BG);
                 AGs.push_back(AG); BGs.push_back(BG); NGs.push_back(NG);
                 std::vector<int> BL = std::vector<int>(ceilog(BG, 2), 2);
                 //printf("Generate Kernel qG = %i, AG = %i, fracLG_NG - %i", qG, AG, this->size/NG);
                 src.push_back(generateKernel(qG, AG, BL, this->size, NG, (qG == 1), getSwarmSize(qG), true));
-                printf("@@@@\n%s\n@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@", src[src.size() - 1].c_str());
+               // printf("@@@@\n%s\n@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@", src[src.size() - 1].c_str());
                 source->push_back(std::make_pair(src[src.size() - 1].c_str(), src[src.size() - 1].length()));
                 AG *= BG;
             }
@@ -83,7 +85,7 @@ public:
                         char* build_log = new char[ret_val_size + 1];
                         clGetProgramBuildInfo((*program)(), devicesToUse[0](), CL_PROGRAM_BUILD_LOG, ret_val_size, build_log, NULL);
                         build_log[ret_val_size] = '\0';
-                        for (int s = 0; s < src.size(); ++s) printf("%s", src[s].c_str());
+                        for (int s = 0; s < (int) src.size(); ++s) printf("%s", src[s].c_str());
                         printf("Kernel build error:\n%s", build_log);
                         delete [] build_log;
                     } catch (cl::Error err) { printf("Kernel build error: unkown (Failed to retrieve build log)."); throw err; }
@@ -112,7 +114,7 @@ public:
     int getButterflyCount(int qG) { return this->size/BGs[qG - 1]; }
     int getSwarmCount(int qG) { return getButterflyCount(qG)/getSwarmSize(qG); }
 
-    virtual double getTotalComputationFlops(int kernel) { return (5.0*this->size)*(log(BGs[kernel])/log(2)); }
+    virtual double getTotalComputationFlops(int kernel) { return (5.0*this->size)*(log((double) BGs[kernel])/log(2.0)); }
     virtual streng getKernelInfo(int kernel) { return intToStr(ceilog(BGs[kernel], 2)); }
 
     void printGPUDebugData(int qG) {
@@ -129,7 +131,7 @@ public:
             data[0]->enqueueWriteArray(*commandQueue, *arrayDataInterface->in);
 
             kernelEvents.clear();
-            for (int qG = 1; qG <= kernels.size(); qG++) { cl::Kernel* kernel = kernels[qG - 1]; //printf("kernel q = %i", qG);
+            for (int qG = 1; qG <= (int) kernels.size(); qG++) { cl::Kernel* kernel = kernels[qG - 1]; //printf("kernel q = %i", qG);
                 size_t workGroupSize;
                 kernel->getWorkGroupInfo<size_t>(devicesToUse[0], CL_KERNEL_WORK_GROUP_SIZE, &workGroupSize); // printf("[workGroupSize = %i]", workGroupSize);
                 int localSize = mIn(this->size/BGs[qG - 1], workGroupSize);
@@ -151,7 +153,7 @@ public:
 
             kernelEvents[kernels.size() - 1].wait();
             if (timerComputation) timerComputation->addRun(getTime(0, true, kernels.size() - 1, false));
-            for (int qG = 1; qG <= kernels.size(); ++qG) kernelTimers[qG - 1].addRun(getTime(qG - 1, true, qG - 1, false));
+            for (int qG = 1; qG <= (int) kernels.size(); ++qG) kernelTimers[qG - 1].addRun(getTime(qG - 1, true, qG - 1, false));
 
 //            printf("out"); for (int q = 0; q < this->size; ++q) this->out->getElement(q).print();
 //            data[(kernels.size() & 1) ^ 1]->enqueueReadArray(*commandQueue, *this->in);
@@ -182,6 +184,7 @@ public:
     inline K add(const K a, const K b);\n\
     inline K komplex(T iR, T iI) { K k; k.r = iR; k.i = iI; return k; };\n\
     inline K unit(int n, int d) { const float frac_PI2_d = " << (2*M_PI) << "f/d; return komplex(native_cos(frac_PI2_d*n), native_sin(frac_PI2_d*n)); };\n\
+    inline K unitC(int n, const int d) { const float dr = 1.f/d; const float frac_PI2_d = " << (2*M_PI) << "f*dr; return komplex(native_cos(frac_PI2_d*n), native_sin(frac_PI2_d*n)); };\n\
     inline K mul(const K a, const K b) { return komplex(a.r * b.r - a.i * b.i, a.r * b.i + a.i * b.r); };\n\
     inline K add(const K a, const K b) { return komplex(a.r + b.r, a.i + b.i); };\n;";
         std::stringstream kernelhead; kernelhead << "__kernel void contiguousFFT_step" << kernelIx << "(__global float *in, __global float *out) {\n";
@@ -199,7 +202,7 @@ public:
         result << buff0.getDeclaration() << "\n" << buff1.getDeclaration() << "\n";
 
         result << "  if (j < " << LG/LL << ") {\n\
-        int gG = j/" << LG/NG << ";\n\
+        int gG = " << IntegerDivision("j", LG/NG)() << ";\n\
         int zG = j - " << LG/NG << "*gG;\n"; // zG = j % " << LG/NG << ";\n";
         // Load data
         result << "int readStartOffset = zG + " << (LG/NG) * Bq << "*gG;";
@@ -213,7 +216,7 @@ public:
         }
         if (preTwiddle) for (int sG = 0; sG < Bq; ++sG) {
             result << buff0.getItem(sG).getRepresentation()
-            << " = mul(" << buff0.getItem(sG).getRepresentation() << ", unit(" << -sG << "*gG, "<< NG << ")" << ");\n";
+            << " = mul(" << buff0.getItem(sG).getRepresentation() << ", unitC(" << -sG << "*gG, "<< NG << ")" << ");\n";
         }
 
         // Local FFT
@@ -265,7 +268,6 @@ public:
 
     virtual ~FFT_OpenCL_Contiguous() {
         for (int d = 0; d < 2; ++d) delete data[d];
-        devicesToUse.clear();
         kernelEvents.clear();
         for (int k = 0; k < (int) kernels.size(); ++k) delete kernels[k];
         delete source;

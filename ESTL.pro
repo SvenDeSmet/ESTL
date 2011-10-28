@@ -1,21 +1,15 @@
+#QT       += core
+QT       -= gui
+CONFIG   += console
+#CONFIG   -= app_bundle
+#TEMPLATE = app
 
-# LINUX/AMD:
-#INCLUDEPATH += /opt/AMDAPP/include/
-#DEFINES += LINUX
-#LIBS += /opt/AMDAPP/lib/x86_64/libOpenCL.so
 
-# WINDOWS/AMD
-#INCLUDEPATH += "C:\Program Files (x86)\AMD APP\include"
-#?? DEFINES += _WIN32
-#?? DEFINES += CL_CALLBACK __stdcall
-#LIBS += $$quote(C:/Program Files (x86)/AMD APP/lib/x86_64/libOpenCL.a)
-#LIBS += -L$$quote(C:/Program Files (x86)/AMD APP/lib/x86_64/) -lOpenCL
+#MAC
+mac:DEFINES += MAC
+mac:LIBS += -lfftw3f -framework OpenCL
+mac:DEFINES += USE_FFTW
 
-# MAC
-DEFINES += MAC
-LIBS += -lfftw3f -framework OpenCL
-
-#DEFINES += __CL_ENABLE_EXCEPTIONS
 
 OTHER_FILES += \
     README \
@@ -55,12 +49,22 @@ SOURCES += \
     tests/Timer.cpp \
     tests/Test.cpp \
     main.cpp \
-    ContiguousKernelGenerator.cpp
+    KernelGenerator.cpp
 
+# LINUX/AMD:
+linux:INCLUDEPATH += /opt/AMDAPP/include/
+linux:LIBS += -L/opt/AMDAPP/lib/x86_64/
+linux:LIBS += -L/opt/AMDAPP/lib/x86/
+linux:LIBS += -lOpenCL
 
+# WINDOWS/AMD
+win32:INCLUDEPATH += "C:\Program Files (x86)\AMD APP\include"
+win32:LIBS += -L$$quote(C:/Program Files (x86)/AMD APP/lib/x86/)
+win32:LIBS += -L$$quote(C:/Program Files (x86)/AMD APP/lib/x86_64/)
+win32:LIBS += -lOpenCL
 
-
-
+# MAC
+#DEFINES += __CL_ENABLE_EXCEPTIONS
 
 
 

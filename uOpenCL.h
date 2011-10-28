@@ -13,17 +13,10 @@
 #define __CL_ENABLE_EXCEPTIONS
 #define CL_LOG_ERRORS stdout
 
-/*
-#ifdef MAC
-#include <OpenCL/opencl.h>
-#endif
-#ifdef LINUX
-#include </opt/AMDAPP/include/CL/opencl.h>
-#endif
-*/
 #include "cl.hpp"
 #include <exception>
 #include <string>
+#include "Complex.h"
 #include "tests/Timer.h"
 #define xCLErr(result) { if (result != CL_SUCCESS) { printf("Exception"); fflush(stdout); throw CLException(result); } }
 
@@ -61,6 +54,45 @@ public:
     }
 };
 
+class CLProgram {
+private:
+    cl::Program* program;
+public:
+    CLProgram(cl::Context& context, std::vector<std::string>& src, std::vector<cl::Device>& devicesToUse) {
+        cl::Program::Sources sources;
+        for (int s = 0; s < (int) src.size(); ++s) sources.push_back(std::make_pair(src[s].c_str(), src[s].length()));
+        program = new cl::Program(context, sources);
+        try { program->build(devicesToUse, "-cl-mad-enable"); }
+        catch (cl::Error cle) { printf("Error: %s", cle.what());
+            if (cle.err() == CL_BUILD_PROGRAM_FAILURE) {
+                cl_build_status status;
+                program->getBuildInfo<cl_build_status>(devicesToUse[0], CL_PROGRAM_BUILD_STATUS, &status);
+                if (status != CL_SUCCESS) { try {
+                    size_t ret_val_size;
+                    clGetProgramBuildInfo((*program)(), devicesToUse[0](), CL_PROGRAM_BUILD_LOG, 0, NULL, &ret_val_size);
+                    printf("size: %i", (int) ret_val_size);
+                    char* build_log = new char[ret_val_size + 1];
+                    clGetProgramBuildInfo((*program)(), devicesToUse[0](), CL_PROGRAM_BUILD_LOG, ret_val_size, build_log, NULL);
+                    build_log[ret_val_size] = '\0';
+                    for (int s = 0; s < (int) src.size(); ++s) printf("%s", src[s].c_str());
+                    printf("Kernel build error:\n%s", build_log);
+                    delete [] build_log;
+                } catch (cl::Error err) { printf("Kernel build error: unkown (Failed to retrieve build log)."); throw err; }
+                } else printf("Kernel build successful.");
+            }
+        } catch (std::exception e) { printf("%s", e.what()); }
+    }
+
+//    cl::Program& getProgram() { return *program; }
+
+    cl::Kernel* getKernel(std::string kernelName) {
+        cl_int err;
+        cl::Kernel* result = new cl::Kernel(*program, kernelName.c_str(), &err); xCLErr(err);
+        return result;
+    }
+
+    ~CLProgram() { delete program; }
+};
 
 class CLPlatform {
 private:
@@ -174,8 +206,7 @@ public:
             imaginaries = clCreateBuffer(context(), CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, size*sizeof(D), array->getImaginaries(), &err);
             xCLErr(err);
         } else {
-            data = clCreateBuffer(context(), CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, 2*size*sizeof(D), array->getData(), &err);
-            xCLErr(err);
+            data = clCreateBuffer(context(), CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, 2*size*sizeof(D), array->getData(), &err); xCLErr(err);
         }
     }
 
@@ -236,10 +267,6 @@ public:
     }
 };
 
-class OpenCLClass {
-public:
-};
-
 /*class Access {
 private:
     streng arrayName, indexExpression;
@@ -265,8 +292,8 @@ public:
 //        devicesToUse = new std::vector<cl::Device>();
         for (int p = 0; p < (int) platforms.size(); ++p) { CLPlatform platform = CLPlatform(platforms[p]);
 //            printf("== Platform %i: %s ==", p, platform.name().c_str());
-            /*printf("Vendor: %s", platform.vendor().c_str());
-            printf("Profile: %s", platform.profile().c_str());
+            printf("[%s %s", platform.vendor().c_str(), platform.version().c_str());
+         /*   printf("Profile: %s", platform.profile().c_str());
             printf("Version: %s", platform.version().c_str());
             printf("Extensions: %s", platform.extensions().c_str());
 */
@@ -275,7 +302,7 @@ public:
             xCLErr(platforms[p].getDevices(CL_DEVICE_TYPE_GPU, &devices));
        //     qDe bug("%i devices", (int) devices.size());
             for (int d = 0; d < (int) devices.size(); ++d) { CLDevice device = CLDevice(devices[d]);
-                printf("[%s %s]", device.vendor().c_str(), device.name().c_str());
+                printf(": %s %s]", device.vendor().c_str(), device.name().c_str());
            /*   printf("Global Memory Size: %ld", device.globalMemorySize());
                 printf("Local Memory Size: %ld", device.localMemorySize());
                 printf("Max Compute Units: %i", device.maxComputeUnits());
@@ -300,6 +327,7 @@ public:
     virtual std::string getKernelInfo(int kernel) { return ""; }
 
     ~OpenCLAlgorithm() {
+        devicesToUse.clear();
         kernelTimers.clear();
         delete context;
         delete commandQueue;

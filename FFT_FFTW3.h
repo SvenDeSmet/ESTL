@@ -8,6 +8,7 @@
 
 #ifndef FFT_FFTW3_H
 #define FFT_FFTW3_H
+#ifdef USE_FFTW
 
 #include "FFT.h"
 #include <fftw3.h>
@@ -17,13 +18,14 @@ private:
     fftwf_plan plan;
     SplitInterleavedDataInterface<D>* splitInterleavedDataInterface;
 public:
+    static std::string getName() { return "FFTW3"; }
 
-    FFT_FFTW3(int n, bool inverse = false, int iBatchCount = 1) : FFT<D>(n, iBatchCount) {
+    FFT_FFTW3(int n, bool forward = true, int iBatchCount = 1) : FFT<D>(n, iBatchCount) {
        this->dataInterface = splitInterleavedDataInterface = new SplitInterleavedDataInterface<D>(this->batchCount*this->size, false);
 
         plan = fftwf_plan_many_dft(1, &this->size, this->batchCount, (fftwf_complex *) splitInterleavedDataInterface->in->getData(), NULL, 1, this->size,
                                                         (fftwf_complex *) splitInterleavedDataInterface->out->getData(), NULL, 1, this->size,
-                                                        !inverse ? FFTW_FORWARD : FFTW_BACKWARD, FFTW_ESTIMATE);
+                                                        forward ? FFTW_FORWARD : FFTW_BACKWARD, FFTW_ESTIMATE);
     }
 
     virtual void execute() { fftwf_execute(plan); }
@@ -31,4 +33,5 @@ public:
     virtual ~FFT_FFTW3() { fftwf_destroy_plan(plan); }
 };
 
+#endif
 #endif // FFT_FFTW3_H

@@ -10,10 +10,11 @@
 #define FFTS_H
 
 #include "FFT.h"
-//#include "FFT_FFTW3.h"
+#include "FFT_FFTW3.h"
 #include "FFT_OpenCL_A.h"
+//#include "FFT_OpenCL_B.h"
 #include "FFT_OpenCL_Contiguous.h"
-#include "FFT_OpenCL_Contiguous_InnerKernelTester.h"
+//#include "FFT_OpenCL_Contiguous_InnerKernelTester.h"
 #include "FFT_OpenCL_LAC.h"
 //#include "FFT_MKL.h"
 

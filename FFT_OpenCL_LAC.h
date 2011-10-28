@@ -13,16 +13,14 @@
 #include <sstream>
 #include <string>
 #include <exception>
+#include <sys/types.h>
 
 #include "uOpenCL.h"
 #include "FFT.h"
-#include "LACKernelGenerator.h"
 #include "tests/Timer.h"
-#include <sys/types.h>
+#include "SimpleMath.h"
 
 #define DBG(a) a
-
-#include "SimpleMath.h"
 
 template <class D> class FFT_OpenCL_LAC : public FFT<D>, public OpenCLAlgorithm {
 public:
@@ -33,14 +31,15 @@ private:
     bool forward;
     std::vector<cl::Kernel*> kernels;
     std::vector<cl::Event> kernelEvents;
-    cl::Program* program;
-    cl::Program::Sources* source;
+    CLProgram* program;
     std::vector<streng> src;
     DataInterfaceType* arrayDataInterface;
 public:
+    static streng getName() { return "Shared memory, contiguous OpenCL FFT"; }
+
     std::vector<int> AGs, BGs, NGs;
 
-    FFT_OpenCL_LAC(int iSize, bool iForward = true, int iBatchCount = 1) : FFT<D>(iSize, iBatchCount), OpenCLAlgorithm(), forward(iForward) {
+    FFT_OpenCL_LAC(int iSize, bool iForward = true, int iBatchCount = 1) : FFT<D>(iSize, iBatchCount), OpenCLAlgorithm(), forward(iForward), program(NULL) {
         this->dataInterface = arrayDataInterface = new DataInterfaceType(this->batchCount*this->size);
 
         int memReq = this->size*sizeof(clFFT_Complex)*this->batchCount;
@@ -50,47 +49,20 @@ public:
         data[1] = new ComplexArrayCL<float>(*context, arrayDataInterface->out);
 
         if (this->size > 1) {
-            int defaultBGl2 = 2;
+            int defaultBGl2 = getDefaultLocalityFactorL2(0);
             int log2Size = ceilog(this->size, 2);
             int stepsG = (log2Size + (defaultBGl2 - 1))/defaultBGl2;
 
-            source = new cl::Program::Sources();
             BGs = std::vector<int>(log2Size/defaultBGl2, 1 << defaultBGl2);
             if (log2Size != ceilint(log2Size, defaultBGl2)) BGs.push_back(1 << (log2Size % defaultBGl2));
             computeParameters(AGs, BGs, NGs);
             for (int qG = 1; qG <= stepsG; ++qG) { //printf("qG = %i", qG);
-                //printf("Generate Kernel qG = %i, AG = %i, fracLG_NG - %i", qG, AG, this->size/NG);
-                src.push_back(generateKernel(qG, this->size, getSwarmSize(qG)));
+                src.push_back(generateKernel(qG - 1));
                 //printf("%s\n@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@", src[src.size() - 1].c_str());
-                source->push_back(std::make_pair(src[src.size() - 1].c_str(), src[src.size() - 1].length()));
             }
 
-            program = new cl::Program(*context, *source);
-            try { program->build(devicesToUse, "-cl-mad-enable"); }
-            catch (cl::Error cle) { printf("Error: %s", cle.what());
-                if (cle.err() == CL_BUILD_PROGRAM_FAILURE) {
-                    cl_build_status status;
-                    program->getBuildInfo<cl_build_status>(devicesToUse[0], CL_PROGRAM_BUILD_STATUS, &status);
-                    if (status != CL_SUCCESS) { try {
-                        size_t ret_val_size;
-                        clGetProgramBuildInfo((*program)(), devicesToUse[0](), CL_PROGRAM_BUILD_LOG, 0, NULL, &ret_val_size);
-                        printf("size: %i", ret_val_size);
-                        char* build_log = new char[ret_val_size + 1];
-                        clGetProgramBuildInfo((*program)(), devicesToUse[0](), CL_PROGRAM_BUILD_LOG, ret_val_size, build_log, NULL);
-                        build_log[ret_val_size] = '\0';
-                        for (int s = 0; s < src.size(); ++s) printf("%s", src[s].c_str());
-                        printf("Kernel build error:\n%s", build_log);
-                        delete [] build_log;
-                    } catch (cl::Error err) { printf("Kernel build error: unkown (Failed to retrieve build log)."); throw err; }
-                    } else printf("Kernel build successful.");
-                }
-            } catch (std::exception e) { printf("%s", e.what()); }
-
-            for (int qG = 1; qG <= stepsG; ++qG) {
-                std::stringstream kernelName; kernelName << "contiguousFFT_step" << qG;
-                cl_int err;
-                kernels.push_back(new cl::Kernel(*program, kernelName.str().c_str(), &err)); xCLErr(err);
-            }
+            program = new CLProgram(*context, src, devicesToUse);
+            for (int qG = 1; qG <= stepsG; ++qG) kernels.push_back(program->getKernel(streng("contiguousFFT_step") + intToStr(qG)));
         }
 
         this->kernelTimers.resize(kernels.size()); // printf("Initialization complete"); fflush(stdout);
@@ -103,27 +75,35 @@ public:
         return (end - start) * 1.0e-9f;
     }
 
-    int getSwarmSize(int qG) { return 1; } //mAx(1, mIn(16, mIn(this->size/NGs[qG - 1], getButterflyCount(qG)))); }
-    int getButterflyCount(int qG) { return this->size/BGs[qG - 1]; }
-    int getSwarmCount(int qG) { return getButterflyCount(qG)/getSwarmSize(qG); }
+    int getDefaultLocalityFactorL2(int level) { int factors[3] = { 3, 1, 1 }; return factors[level]; }
 
+    // OpenCLAlgorithm
     virtual double getTotalComputationFlops(int kernel) { return (5.0*this->size)*(log(BGs[kernel])/log(2)); }
     virtual streng getKernelInfo(int kernel) { return intToStr(ceilog(BGs[kernel], 2)); }
 
     void printGPUDebugData(int qG) {
         data[(qG & 1) ^ 1]->enqueueReadArray(*commandQueue, *arrayDataInterface->in);
-        printf("\n%i qG = %i", (qG & 1) ^ 1, qG); for (int q = 0; q < this->size; ++q) arrayDataInterface->in->getElement(q).print();
-     //   data[(qG & 1)]->enqueueReadArray(*commandQueue, *arrayDataInterface->in);
-       // printf("1 qG = %i", qG); for (int q = 0; q < this->size; ++q) arrayDataInterface->in->getElement(q).print();
+        printf("\n%i qG = %i", (qG & 1) ^ 1, qG); for (int q = 0; q < this->size; ++q) arrayDataInterface->in->getElement(q).print((q & 7) == 7);
     }
 
-    int getThreadsPerWarpL2() { return 0; }
+    int getSwarmSize(int qG) { return 1; } //mAx(1, mIn(16, mIn(this->size/NGs[qG - 1], getButterflyCount(qG)))); }
+    int getButterflyCount(int qG) { return this->size/BGs[qG - 1]; }
+    int getSwarmCount(int qG) { return getButterflyCount(qG)/getSwarmSize(qG); }
+    int getThreadsPerWarpL2() { return 1; }
     int getThreadsPerWarp() { return 1 << getThreadsPerWarpL2(); }
-    int getWarpsPerKernel(int qG) { return mIn(1, mAx(1, (this->size/BGs[qG - 1])/getThreadsPerWarp())); }
+    int getActualThreadsPerWarpL2(int qG) { return 0*mIn(getThreadsPerWarpL2(), ceilog(getSwarmCount(qG)/getWarpsPerKernel(qG), 2)); }
+    int getThreadsPerBlock(int qG) { return getWarpsPerKernel(qG) << getActualThreadsPerWarpL2(qG); }
+    int getWarpsPerKernel(int qG) { return mIn(4, mAx(1, 1 << mAx(0, (ceilog(BGs[qG - 1], 2) - getDefaultLocalityFactorL2(1))))); }
+    int getWorkItemsPerKernel(int qG) { return getSwarmCount(qG)*getWarpsPerKernel(qG); }
+
+    virtual void setKernelParameters(int kernelIx, cl::Kernel& kernel) { int q_G = kernelIx; int qG = q_G + 1;
+        kernel.setArg<cl_mem>(0, data[(qG ^ 1) & 1]->getData());
+        kernel.setArg<cl_mem>(1, data[(qG ^ 0) & 1]->getData());
+    }
 
     virtual void execute() { //printf("Starting execution with %i kernels", (int) kernels.size()); fflush(stdout);
         if (this->size == 1) { arrayDataInterface->out->setElement(0, arrayDataInterface->in->getElement(0)); }
-        else { if (kernels.size() > 0) {
+        else {
             for (int q = 0; q < this->size; ++q) arrayDataInterface->out->setElement(q, 888); data[1]->enqueueWriteArray(*commandQueue, *arrayDataInterface->out);
             data[0]->enqueueWriteArray(*commandQueue, *arrayDataInterface->in);
 
@@ -131,31 +111,25 @@ public:
             for (int qG = 1; qG <= kernels.size(); ++qG) { cl::Kernel* kernel = kernels[qG - 1]; //printf("kernel q = %i", qG);
                 size_t workGroupSize;
                 kernel->getWorkGroupInfo<size_t>(devicesToUse[0], CL_KERNEL_WORK_GROUP_SIZE, &workGroupSize); // printf("[workGroupSize = %i]", workGroupSize);
-                int localSize = mIn((this->size/BGs[qG - 1])*getWarpsPerKernel(qG), workGroupSize);
+                int workItems = getWorkItemsPerKernel(qG);
+                int localSize = mIn(mIn(workItems, workGroupSize), getThreadsPerBlock(qG));
 
-//                printf("<<%i - %i>>", (ceilint(getSwarmCount(qG), localSize)), (localSize));
-           //     printf("wgs = %i --- size = %i -- s = %i -- localSize == %i -- butterFlyCount = %i", workGroupSize, this->size, s, localSize, butterflyCount);
-                cl::KernelFunctor func = kernel->bind(*commandQueue, cl::NDRange(ceilint(getSwarmCount(qG)*getWarpsPerKernel(qG), localSize)), cl::NDRange(localSize));
-                kernel->setArg<cl_mem>(0, data[(qG ^ 1) & 1]->getData());
-                kernel->setArg<cl_mem>(1, data[(qG ^ 0) & 1]->getData());
-
-//printGPUDebugData(qG);
+  //              printf("<<%i - %i>>", (ceilint(workItems, localSize)), (localSize));
+                cl::KernelFunctor func = kernel->bind(*commandQueue, cl::NDRange(ceilint(workItems, localSize)), cl::NDRange(localSize));
+                setKernelParameters(qG - 1, *kernel);
+printGPUDebugData(qG);
                 try { kernelEvents.push_back(func()); } // enqueue kernel + retain kernel event
                 catch (cl::Error e) { printf("CL Exception"); CLException cle = CLException(e); cle.handle(); fflush(stdout); }
                 catch (...) { printf("Unknown exception"); fflush(stdout); }
             } // printf("Computation ends..."); fflush(stdout);
-//printGPUDebugData(kernels.size() + 1);
+printGPUDebugData(kernels.size() + 1);
 
             data[kernels.size() & 1]->enqueueReadArray(*commandQueue, *arrayDataInterface->out);
 
             kernelEvents[kernels.size() - 1].wait();
             if (timerComputation) timerComputation->addRun(getTime(0, true, kernels.size() - 1, false));
             for (int qG = 1; qG <= kernels.size(); ++qG) kernelTimers[qG - 1].addRun(getTime(qG - 1, true, qG - 1, false));
-
-//          printf("out"); for (int q = 0; q < this->size; ++q) this->out->getElement(q).print();
-//          data[(kernels.size() & 1) ^ 1]->enqueueReadArray(*commandQueue, *this->in);
-//          printf("in"); for (int q = 0; q < this->size; ++q) this->in->getElement(q).print();
-        } }
+        }
     }
 
     virtual ~FFT_OpenCL_LAC() {
@@ -163,7 +137,6 @@ public:
         devicesToUse.clear();
         kernelEvents.clear();
         for (int k = 0; k < (int) kernels.size(); ++k) delete kernels[k];
-        delete source;
         delete program;
     }
 
@@ -172,117 +145,165 @@ public:
         for (int q = 1; q <= B.size(); ++q) { A.push_back(b); b *= B[q - 1]; N.push_back(b); }
     }
 
-    streng generateKernel(int qG, int LG, int swarmSize = 1) { int q_G = qG - 1;
+/*
+0 qG = 1(1.000000, 0.000000)(0.707107, 0.000000)(0.000000, 0.000000)(-0.707107, 0.000000)(-1.000000, 0.000000)(-0.707107, 0.000000)(-0.000000, 0.000000)(0.707107, 0.000000)
+1 qG = 2(0.000000, 0.000000)(0.000000, 0.000000)(-0.000000, 0.000000)(0.000000, 0.000000)(2.000000, 0.000000)(1.414214, 0.000000)(0.000000, 0.000000)(-1.414214, 0.000000)
+1 qG = 2(-0.000000, 0.000000)(0.000000, 0.000000)(2.000000, -0.000000)(1.414215, 1.414214)(0.000000, 0.000000)(0.000000, 0.000000)(2.000000, 0.000000)(1.414212, -1.414214)
+0 qG = 3(-0.000000, 0.000000)(4.000001, -0.000001)(0.000000, 0.000000)(0.000001, 0.000004)(-0.000000, 0.000000)(-0.000001, 0.000001)(0.000000, 0.000000)(3.999999, -0.000004)
+*/
+
+virtual streng generateKernel(int q_G) { int qG = q_G + 1;
  //       printf("Generate Kernel (%i, %i): [%i] BM = ", qG, LG, BGs[q_G]);
+        int LG = this->size;
         int plannarMask = (1 << GlobalPlannarLevel) - 1;
-        int defaultBMl2 = 2; int defaultBM = 1 << defaultBMl2;
+        int defaultBMl2 = getDefaultLocalityFactorL2(1); int defaultBM = 1 << defaultBMl2;
         int BGl2 = ceilog(BGs[q_G], 2);
         std::vector<int> BM = std::vector<int>(BGl2/defaultBMl2, defaultBM);
         if (BGl2 != ceilint(BGl2, defaultBMl2)) BM.push_back(1 << (BGl2 % defaultBMl2));
         int kM = BM.size();
-  //      for (int q = 0; q < kM; ++q) printf("%i*", BM[q]);
+        for (int q = 0; q < kM; ++q) printf("{%i}", BM[q]);
         std::vector<int> AM, NM;
         computeParameters(AM, BM, NM);
         //int swarmStrideLevel = 5;
 
         int phiL2 = getThreadsPerWarpL2();
-        int sharedBufferLength = 4;
-        int sharedDataSize = sharedBufferLength << phiL2;
+        int sharedBufferLengthL = 2;
+        int sharedBufferLengthM = getWarpsPerKernel(qG)*sharedBufferLengthL;
+        int sharedDataSize = sharedBufferLengthM << getActualThreadsPerWarpL2(qG);
 
-        std::stringstream result; if (qG == 1) result << "\
-            typedef float T;\n\
-            struct Komplex { T r, i; };\n\
-            typedef struct Komplex K;\n\
-            inline K komplex(T iR, T iI);       inline K komplex(T iR, T iI) { K k; k.r = iR; k.i = iI; return k; };\n\
-            inline K unit(int n, int d);\n\
-            inline K mul(const K a, const K b); inline K mul(const K a, const K b) { return komplex(a.r * b.r - a.i * b.i, a.r * b.i + a.i * b.r); };\n\
-            inline K add(const K a, const K b); inline K add(const K a, const K b) { return komplex(a.r + b.r, a.i + b.i); }\n\
-            inline K unit(int n, int d) { const float frac_PI2_d = " << (2*M_PI) << "f/d; return komplex(native_cos(frac_PI2_d*n), native_sin(frac_PI2_d*n)); };\n;";
-
+        std::stringstream result;
+        if (qG == 1) result << KomplexMath::getDeclarations();
         result << "__kernel void contiguousFFT_step" << qG << "(__global float *in, __global float *out) {\n";
-        //result << "__local float sharedData[" << sharedDataSize << "];";
-        //result << "int globid = get_global_id(0); // = phi*w + v \n";
+        result << "__local float sharedData[" << sharedDataSize << "];";
         result << "int jG = get_global_id(0);\n"; // = phi*w + v \n
           /*  int swarmIxOffset = globid >> " << swarmStrideLevel << ";\n\
             int subSwarmIx = globid & " << ((1 << swarmStrideLevel) - 1) << ";\n\
             for (int swarmIx = 0; swarmIx < " << swarmSize << "; ++swarmIx) {\n\
             int j = subSwarmIx + ((swarmIxOffset*" << swarmSize << " + swarmIx) << " << swarmStrideLevel << ");\n";*/
         result << "if (jG < " << (LG/BGs[q_G])*getWarpsPerKernel(qG) << ") {\n";
-//        result << "out[jG] = jG; ";
         printf("(wpk = %i)", getWarpsPerKernel(qG));
-        result << "int jM = (jG >> " << phiL2 << ") % " << getWarpsPerKernel(qG) << ";\n";
-//        result << "out[jM] = -jM;";
-        result << "jG = (jG / " << getWarpsPerKernel(qG) << ") /*+ (jM * " << ((LG/BGs[q_G]) << phiL2) << ")*/;\n";
+        result << "int jM = (jG >> " << getActualThreadsPerWarpL2(qG) << ") % " << getWarpsPerKernel(qG) << ";\n";
+//        result << "out[jG] = jG; return;";
+        printf("(actualThreadsPerWarp = %i)", 1 << getActualThreadsPerWarpL2(qG));
+//        result << "out[jG] = jM; return;";
+        result << "jG = ((jG >> " << getActualThreadsPerWarpL2(qG) << ") / " << getWarpsPerKernel(qG) << ") << " << getActualThreadsPerWarpL2(qG) << ";\n";
+//        result << "out[jG] = jG; return;";
 
         result << "\
         int gG = jG/" << LG/NGs[q_G] << ";\n\
         int zG = jG - " << LG/NGs[q_G] << "*gG;\n";
 
         // M-Level FFT
+        int maxBM = 0;
+        for (int m = 0; m < (int) BM.size(); ++m) maxBM = mAx(BM[m], maxBM);
+        Array buff0 = Array("K", maxBM, true, "buff0_");
+        Array buff1 = Array("K", maxBM, true, "buff1_");
+        Array* buff[2] = { &buff0, &buff1 };
+        result << buff0.getDeclaration() << buff1.getDeclaration();
+
+        int bX = 0;
         for (int qM = 1; qM <= BM.size(); ++qM) { int q_M = qM - 1; result << "{";
             result << "\
             int gM = jM/" << BGs[q_G]/NM[q_M] << ";\
             int zM = jM - " << BGs[q_G]/NM[q_M] << "*gM;";
-            std::vector<int> BL = std::vector<int>(ceilog(BM[q_M], 2), 2);
-            int kL = BL.size();
-            printf("M-level %i: (", qM); for (int b = 0; b < BL.size(); ++b) printf("[%i] ", BL[b]); printf(")");
-            std::vector<int> AL, NL;
+            std::vector<int> AL, NL, BL = std::vector<int>(ceilog(BM[q_M], 2), 2);
             computeParameters(AL, BL, NL);
+            int kL = BL.size();
 
-            Array buff0 = Array("K", BM[q_M], true, "buff0_");
-            Array buff1 = Array("K", BM[q_M], true, "buff1_");
-            Array* buffs[2] = { &buff0, &buff1 };
-            result << buff0.getDeclaration() << buff1.getDeclaration();
-
-            // M-Level Read (and pretwiddle)
-            if (qM == 1) { // M-level: From global memory
+            // G&M-Level Read (and pretwiddle)
+            result << "int readStartOffsetM = zM + " << ((BGs[q_G]/NM[q_M]) * BM[q_M]) << "*gM;\n";
+            if (qM == 1) {
                 result << "int readStartOffsetG = zG + " << ((LG/NGs[q_G]) * BGs[q_G]) << "*gG;\n";
-                result << "int readStartOffsetM = zM + " << ((BGs[q_G]/NM[q_M]) * BM[q_M]) << "*gM;\n";
                 for (int sM = 0; sM < BM[q_M]; ++sM) { result << "{"
                     << "int index = readStartOffsetG + (readStartOffsetM + " << sM*(BGs[q_G]/NM[q_M]) << ")*" << (LG/NGs[q_G]) << ";"
-                    << "int ix = ((index >> " << GlobalPlannarLevel << ") << " << (GlobalPlannarLevel + 1) << ") | (index & " << plannarMask << ");"
-                    << buff0.getItem(sM)() << ".r = in[ix];"
-                    << buff0.getItem(sM)() << ".i = in[ix + " << (1 << GlobalPlannarLevel) << "];"
-                    << "}\n";
+                    << "/*if (index < " << this->size << ")*/ { int ix = ((index >> " << GlobalPlannarLevel << ") << " << (GlobalPlannarLevel + 1) << ") | (index & " << plannarMask << ");"
+                    << buff[bX]->getItem(sM)() << ".r = in[ix];"
+                    << buff[bX]->getItem(sM)() << ".i = in[ix + " << (1 << GlobalPlannarLevel) << "];"
+                    << "}}\n";
                 }
-                if (qG > 1) for (int sM = 0; sM < BM[q_M]; ++sM) {
-                    result << buff0.getItem(sM)()
-                    << " = mul(" << buff0.getItem(sM)() << ", unit(-(readStartOffsetM + " << sM*(BGs[q_G]/NM[q_M]) << ")*gG, "<< NGs[q_G] << ")" << ");\n";
-                }
-            }
 
-/*            if ((qM > 1) && (qM < BM.size())) { int q_MPrev = q_M - 1; result << "{"; // Local exchange
-                result << "int threadIx = (jG & " << ((1 << phiL2) - 1) << ");";
-                result << "int threadSubSetIx = jG ;";
+                if (qG > 1) for (int sM = 0; sM < BM[q_M]; ++sM) { // Pretwiddle
+                    result << buff[bX]->getItem(sM)()
+                    << " = mul(" << buff[bX]->getItem(sM)() << ", unit(-(readStartOffsetM + " << sM*(BGs[q_G]/NM[q_M]) << ")*gG, "<< NGs[q_G] << ")" << ");\n";
+                }
+            } else { int q_MW = q_M - 1; result << "{"; // Local exchange
+                result << "int coreIx = (jG & " << ((1 << getActualThreadsPerWarpL2(qG)) - 1) << ");";
+                result << "for (int n = 0; n < " << sharedBufferLengthM << "; ++n) sharedData[((jM*" << sharedBufferLengthM << " + n) << " << getActualThreadsPerWarpL2(qG) << ") + coreIx] = 777;";
+                result << "barrier(CLK_LOCAL_MEM_FENCE);\n";
+                for (int l = 0; l < maxBM; l++) result << buff[bX ^ 1]->getItem(l)() << " = komplex(333.f, 44.f);";
                 result << "\
                 int gR = gM;\
                 int zR = zM;\
-                int gW = jM/" << BGs[q_G]/NM[q_M - 1] << ";\
-                int zW = jM - " << BGs[q_G]/NM[q_M - 1] << "*gM;";
-                for (int y = 0; y < synchronisationCount; ++y) { result << "{";
-                    result << "int writeStartOffsetM = " << BGs[q_G]/NM[q_MPrev] << "*gM + zM;\n";
-                    for (int hM = 0; hM < BM[q_MPrev]; ++hM) { result
-                        << "int index = writeStartOffsetM + " << hM*AM[q_MPrev]*(BGs[q_G]/NM[q_MPrev]) << ";";
+                int gW = jM/" << BGs[q_G]/NM[q_MW] << ";\
+                int zW = jM - " << BGs[q_G]/NM[q_MW] << "*gW;\
+                int gR_div_AMW = (gR/" << AM[q_MW] << ");\
+                int gR_mod_AMW = gR - " << AM[q_MW] << "*gR_div_AMW;\
+                int zW_div_DMR = (zW/" << BGs[q_G]/NM[q_M] << ");\
+                int zW_mod_DMR = zW - " << BGs[q_G]/NM[q_M] << "*zW_div_DMR;\
+                ";
+                if (BM[q_M] != BM[q_MW]) printf("Differing radices!!!");
+                for (int syncStep = 0; syncStep < ceildiv(BM[q_M], sharedBufferLengthL); ++syncStep) {
+                    printf("(syncSteps = %i, sharedDataSize = %i)", ceildiv(BM[q_M], sharedBufferLengthL), sharedDataSize);
+/*  for (int sM = 0; sM < BM[q_M]; ++sM) { //
+                    result << "out[2*(2*jG + jM) + " << sM << "] = " << buff[bX]->getItem(sM)() << ".r;";
+                    result << "out[2*(2*jG + jM) + " << sM << " + " << (1 << GlobalPlannarLevel) << "] = " << buff[bX]->getItem(sM)() << ".i;";
+  }
+result << "return;";*/
+//result << "if ((jM == 0) && (jG == 0)) { out[0] = " << buff[bX ^ 1]->getItem(1)() << ".r; } return;";
+                    streng components[2] = { "r", "i" };
+                    for (int c = 0; c < 2; ++c) { result << "{\n";
+                        // Write
+       //                 result << "if ((jM == 0) && (jG == 0)) out[0] = " << buff[bX]->getItem(1)() << ".r;"; result << "return;";
+         //               result << "if ((jM == 0) && (jG == 0)) out[0] = (zW_div_DMR + zW_mod_DMR*" << (BM[q_M]) << ")*" << (sharedBufferLengthL << phiL2)
+           //                                       << "+" << ((1 % sharedBufferLengthL) << phiL2) << " + coreIx; "; result << "return;";
+  /*for (int sM = 0; sM < BM[q_M]; ++sM) { //
+                    result << "out[2*(2*jG + jM) + " << sM << "] = " << buff[bX]->getItem(sM)() << ".r;";
+                    result << "out[2*(2*jG + jM) + " << sM << " + " << (1 << GlobalPlannarLevel) << "] = " << buff[bX]->getItem(sM)() << ".i;";
+  }
+result << "return;";*/
+                        for (int hW = sharedBufferLengthL*syncStep; hW < mIn(BM[q_M], sharedBufferLengthL*(syncStep + 1)); ++hW) {
+                            result << "sharedData[(zW_div_DMR + zW_mod_DMR*" << (BM[q_M]) << ")*" << (sharedBufferLengthL << getActualThreadsPerWarpL2(qG))
+                                                  << "+" << ((hW % sharedBufferLengthL) << getActualThreadsPerWarpL2(qG)) << " + coreIx] = "
+                                << (*buff[bX])[hW]() << "." << components[c] << ";\n";
+                        }
+                        result << "barrier(CLK_LOCAL_MEM_FENCE);\n";
+                        result << "for (int d = 0; d < " << this->size << "; ++d) out[d] = 555;";
+    //result << "if ((jM == 0) && (jG == 0)) out[0] = sharedData[32]; return;";
+//result << "if ((jM == 0)) for (int d = 0; d < " << sharedDataSize <<"; ++d) out[4*jG + d] = sharedData[d]; return;";
+                        // Read
+                        result << "if ((gR/" << sharedBufferLengthL << ") == " << syncStep << ") {\n";
+                        for (int sR = 0; sR < BM[q_M]; ++sR) {
+                            result << (*buff[bX ^ 1])[sR]() << "." << components[c]
+                                << " = sharedData[gR_mod_AMW*" << (BM[q_M])*(sharedBufferLengthL << getActualThreadsPerWarpL2(qG)) << " + "<< sR*(sharedBufferLengthL << getActualThreadsPerWarpL2(qG))
+                                                  << "+" << "((gR_div_AMW % "<< sharedBufferLengthL << ") << " << getActualThreadsPerWarpL2(qG) << ")" << " + coreIx];\n";
+                        }
+                        result << "}";
+                        result << "barrier(CLK_LOCAL_MEM_FENCE);\n";
+                        result << "}";
                     }
-                    result << "}";
-
-                    result << "int readStartOffsetM = zM + " << ((BGs[q_G]/NM[q_M]) * BM[q_M]) << "*gM;\n";
-                    for (int sM = 0; sM < BM[q_M]; ++sM) { result
-                        << "int index = readStartOffsetM + " << sM*(BGs[q_G]/NM[q_M]) << ";";
-                    }
-                    for (int sM = 0; sM < BM[q_M]; ++sM) {
-                        result << buff0.getItem(sM)()
-                        << " = mul(" << buff0.getItem(sM)() << ", unit(" << -sM << "*gM, "<< NMs[q_M] << ")" << ");\n";
-                    }
-                    result << "}";
                 }
+                bX ^= 1;
+
+// (0.000000, 0.000000)(-0.000000, 0.000000)(0.000000, 0.000000)(-0.000000, 0.000000)(2.000000, 0.000000)(0.000000, 0.000000)(2.000000, 0.000000)(0.000000, 0.000000)
+
+  for (int sM = 0; sM < BM[q_M]; ++sM) { //
+                    result << "out[2*(2*jG + jM) + " << sM << "] = " << buff[bX]->getItem(sM)() << ".r;";
+                    result << "out[2*(2*jG + jM) + " << sM << " + " << (1 << GlobalPlannarLevel) << "] = " << buff[bX]->getItem(sM)() << ".i;";
+  }
+result << "return;";
+
+                for (int sM = 0; sM < BM[q_M]; ++sM) { // Pretwiddle
+                    result << buff[bX]->getItem(sM)()
+                    << " = mul(" << buff[bX]->getItem(sM)() << ", unit(" << -sM << "*gM, "<< NM[q_M]<< ")" << ");\n";
+                }
+
                 result << "}";
-            }*/
+            }
 
             // L-level FFT
-            for (int qL = 1; qL <= kL; ++qL) { int q_L = qL - 1;
-                Array& source = *buffs[(qL ^ 1) & 1];
-                Array& target = *buffs[qL & 1];
+            /*if (qM == 1)*/ for (int qL = 1; qL <= kL; ++qL) { int q_L = qL - 1;
+                Array& source = *buff[bX ^ (qL & 1) ^ 1];
+                Array& target = *buff[bX ^ (qL & 1)];
 
                 for (int gL = 0; gL < AL[qL - 1]; ++gL) { result << "{";
                     for (int zL = 0; zL < (BM[q_M]/NL[q_L]); ++zL) { result << "{";
@@ -307,23 +328,23 @@ public:
                 }
             }
 
-            // Global Write
-            if (qM == kM) { // M-level: To global memory
+            // G&M-Level Write
+//            result << "out[jM] = jM; return;";
+            if (qM == 2) {
                 result << "int writeStartOffsetG = zG + " <<       LG/NGs[q_G] << "*gG;\n";
                 result << "int writeStartOffsetM = zM + " << BGs[q_G]/NM[q_M] << "*gM;\n";
                 for (int hM = 0; hM < BM[q_M]; ++hM) { result << "{"
                     << "int index = writeStartOffsetG + (writeStartOffsetM + " << hM*AM[q_M]*(BGs[q_G]/NM[q_M]) << ")*" << AGs[q_G]*(LG/NGs[q_G]) << ";"
-                    << "int ix = ((index >> " << GlobalPlannarLevel << ") << " << (GlobalPlannarLevel + 1) << ") | (index & " << plannarMask << ");"
-                    << "out[ix] = " << buffs[kL & 1]->getItem(hM)() << ".r;"
-                    << "out[ix + " << (1 << GlobalPlannarLevel) << "] = " << buffs[kL & 1]->getItem(hM)() << ".i;"
-                    << "}\n";
+                    << "/*if (jM == 0)*/ if (index < " << this->size << ") { int ix = ((index >> " << GlobalPlannarLevel << ") << " << (GlobalPlannarLevel + 1) << ") | (index & " << plannarMask << ");"
+                    << "out[ix] = " << (*buff[bX ^ (kL & 1)])[hM]() << ".r;"
+                    << "out[ix + " << (1 << GlobalPlannarLevel) << "] = " << (*buff[bX ^ (kL & 1)])[hM]() << ".i;"
+                    << "}}\n";
                 }
-//                result << "out[2*jM + jG] = writeStartOffsetG;";
-  //              result << "out[2*(2 + jM)] = jG;";
-             //   result << "out[4 + jM] = jM;";
-               // result << "out[6 + jM] = jG;";
+//                 result << "out[jM] = jM;";
+                result << "return;";
             }
             result << "}";
+            bX = bX ^ (kL & 1);
         }
 
         result << "}}";

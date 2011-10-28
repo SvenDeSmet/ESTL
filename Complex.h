@@ -65,7 +65,7 @@ public:
         Complex<R>() { }
         Complex<R>(R iR) : r(iR), i((R) 0.0) { }
         static Complex<R> unit(double iPhase) { return Complex<R>(cos(iPhase), sin(iPhase)); }
-        void print() const { printf("(%f, %f)\n", r, i); }
+        void print(bool newline = false) const { printf("(%f, %f)%s", r, i, newline ? "\n" : ""); }
         std::string toString() const { char result[128]; sprintf(result, "(%f, %f)", r, i); return result; }
         R getNorm() const { return sqrt(getNormSquared()); }
         R getNormSquared() const { return ((*this) * ((*this).getConjugate())).getReal(); }

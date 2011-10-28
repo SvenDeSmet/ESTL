@@ -12,7 +12,6 @@
 
 //#include <faad.h>
 #include "Timer.h"
-
 #include <exception>
 #include <math.h>
 #include "assert.h"
@@ -34,14 +33,11 @@ public:
     ~TestFailureException() throw() {}
 };
 
-template <class T>
-void assert_approx_equal(T a, T b, double factor = 1.0) {
+template <class T> void assert_approx_equal(T a, T b, double factor = 1.0) {
     if (abs(a - b) > MAX_ERR*factor) throw TestFailureException("a != b");
 }
 
-
-template <class D>
-void assert_approx_equal(Complex<D> a, Complex<D> b, double factor = 1.0) {
+template <class D> void assert_approx_equal(Complex<D> a, Complex<D> b, double factor = 1.0) {
     if ((a - b).getNormSquared() > MAX_ERR*factor) throw TestFailureException(a.toString() + std::string(" != ") + b.toString());
 }
 
@@ -49,9 +45,9 @@ bool TestFourierFloat::execute() {
     typedef Complex<D> C;
 
     for (int f = 0; f < (int) fftFactories.size(); ++f) {
-        for (int m = 3; m < 24; m++) { int M = 1 << m; //qDebug("%i", m);
-            printf("@@@ m == %i: ", m);
-            FFT<D>* fft = fftFactories[f]->newFFT(M);
+        for (int m = 2; m < 24; m++) { int M = 1 << m; //qDebug("%i", m);
+            printf("@@@ %s @@@ m == %i: ", fftFactories[f]->getName().c_str(), m);
+            FFT<D>* fft = fftFactories[f]->newFFT(M, true);
             Timer timer, timerComputation;
 
             if (OpenCLAlgorithm* fft_opencl = dynamic_cast<OpenCLAlgorithm*>(fft)) { fft_opencl->timerComputation = &timerComputation; }
@@ -59,7 +55,7 @@ bool TestFourierFloat::execute() {
             int maxComps = (4096*1024*8)/M;
             if (maxComps == 0) maxComps = 1;
 
-            for (int k = 0; (2*k < M) && (k < maxComps); k++) {// qDebug("k == %i ** (M = %i) ***********", k, M);
+            for (int k = 1; (2*k < M) && (k < maxComps); k++) {// qDebug("k == %i ** (M = %i) ***********", k, M);
                 for (int q = 0; q < M; q++) fft->setData(q, (D) cos(2*M_PI*((1.0 * k*q)/M)));
 
                 timer.resume();
@@ -76,8 +72,9 @@ bool TestFourierFloat::execute() {
             double floatingOperations = (5.0*m*(1 << m));
             double GFlopsTotal = 1E-9*floatingOperations/timer.getAverageTime();
             double GFlopsComputation = (timerComputation.getRuns() > 0) ? 1E-9*floatingOperations/timerComputation.getAverageTime() : -1;
-            printf(" %.2f Gfs (%.2f Gfs)\n", GFlopsTotal, GFlopsComputation);
-            if (OpenCLAlgorithm* fft_opencl = dynamic_cast<OpenCLAlgorithm*>(fft)) { //printf("\n");
+            if (GFlopsComputation >= 0) { printf(" %.2f Gfs (%.2f Gfs)\n", GFlopsTotal, GFlopsComputation); }
+            else { printf(" %.2f Gfs\n", GFlopsTotal); }
+            if (OpenCLAlgorithm* fft_opencl = dynamic_cast<OpenCLAlgorithm*>(fft)) if (fft_opencl->kernelTimers.size() > 0) { //printf("\n");
                 double totalT = 0;
                 for (int qG = 1; qG <= (int) fft_opencl->kernelTimers.size(); ++qG) {
                     double t = fft_opencl->kernelTimers[qG - 1].getAverageTime();
@@ -104,21 +101,21 @@ bool TestFourierFloat::execute() {
 bool performTests() {
     bool result = true;
 
-    printf("Starting tests");  fflush(stdout);
-
     typedef float T;
     std::vector<FFTFactory<T> *> factories;
    // factories.push_back(new FFTFactorySpecific<FFT_OpenCL_Contiguous_InnerKernelTester<T> >());
-    //factories.push_back(new FFTFactorySpecific<FFT_FFTW3<T> >());
-    factories.push_back(new FFTFactorySpecific<FFT_OpenCL_LAC<T> >());
-  //  factories.push_back(new FFTFactorySpecific<FFT_OpenCL_Contiguous<T> >());
-    //factories.push_back(new FFTFactorySpecific<FFT_OpenCL_A<T, clFFT_InterleavedComplexFormat> >());
-    //factories.push_back(new FFTFactorySpecific<FFT_OpenCL_A<T, clFFT_SplitComplexFormat> >());
+//    factories.push_back(new FFTFactorySpecific<FFT_FFTW3<T> >());
+    factories.push_back(new FFTFactorySpecific<FFT_OpenCL_Contiguous<T> >());
+//    factories.push_back(new FFTFactorySpecific<FFT_OpenCL_A<T, clFFT_InterleavedComplexFormat> >());
+//   factories.push_back(new FFTFactorySpecific<FFT_OpenCL_A<T, clFFT_SplitComplexFormat> >());
+//    factories.push_back(new FFTFactorySpecific<FFT_OpenCL_LAC<T> >());
 
     TestFourierFloat* test = new TestFourierFloat(factories);
     try { result = result && test->execute(); }
     catch (TestFailureException& e) { printf("%s", e.what()); }
     catch (std::exception& e) { printf("Unknown exception (%s)", e.what()); }
+
+    getchar();
 
     delete test;
 

@@ -11,6 +11,9 @@
 
 #include "Complex.h"
 #include <stdio.h>
+#include <string>
+
+typedef std::string streng;
 
 template <class D> class DataInterface {
 public:
@@ -75,13 +78,16 @@ public:
 
 template <class D> class FFTFactory {
 public:
-    virtual FFT<D>* newFFT(int n, bool inverse = false) = 0;
+    virtual streng getName() = 0;
+    virtual int getVersion() { return 0; }
+    virtual FFT<D>* newFFT(int n, bool forward = true) = 0;
 };
 
 template <class FFTClass> class FFTFactorySpecific : public FFTFactory<typename FFTClass::DataType> {
     typedef typename FFTClass::DataType D;
 public:
-    virtual FFT<D>* newFFT(int n, bool inverse = false) { return (FFT<D>*) new FFTClass(n, inverse); }
+    virtual streng getName() { return FFTClass::getName(); }
+    virtual FFT<D>* newFFT(int n, bool forward = true) { return (FFT<D>*) new FFTClass(n, forward); }
 };
 
 template <class D> class FFT2D {

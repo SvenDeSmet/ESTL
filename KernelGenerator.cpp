@@ -6,7 +6,7 @@
  * http://www.gnu.org/licenses/lgpl.html
  */
 
-#include "ContiguousKernelGenerator.h"
+#include "KernelGenerator.h"
 #include "stdio.h"
 
 std::string intToStr(int i) { if (i == 0) return "0";

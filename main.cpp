@@ -8,8 +8,4 @@
 
 #include "tests/Test.h"
 
-int main(int argc, char *argv[]) {
-    performTests();
-
-    return 0;
-}
+int main(int argc, char *argv[]) { return performTests() ? 0 : 1; }
