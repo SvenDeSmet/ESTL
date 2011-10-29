@@ -95,22 +95,22 @@ public:
     Complex<D> *data;
     int xDim, yDim;
     FFTFactory<D>* fftFactory;
-    bool inverse;
+    bool forward;
 
-    FFT2D(int iXDim, int iYDim, FFTFactory<D>* iFFTFactory, bool iInverse = false) : xDim(iXDim), yDim(iYDim), fftFactory(iFFTFactory), inverse(iInverse) {
+    FFT2D(int iXDim, int iYDim, FFTFactory<D>* iFFTFactory, bool iForward = true) : xDim(iXDim), yDim(iYDim), fftFactory(iFFTFactory), forward(iForward) {
         data = new Complex<D>[xDim*yDim];
     }
 
     virtual void execute() {
-        FFT<D>* fftX = fftFactory->newFFT(xDim, inverse);
-        for (int y = 0; y < yDim; ++y) { if ((y & 0x3FF) == 0) printf("%i:", y);
+        FFT<D>* fftX = fftFactory->newFFT(xDim, forward);
+        for (int y = 0; y < yDim; ++y) {// if ((y & 0x3FF) == 0) printf("%i:", y);
             for (int x = 0; x < xDim; ++x) fftX->setData(x, data[y*xDim + x]);
             fftX->execute();
             for (int x = 0; x < xDim; ++x) data[y*xDim + x] = fftX->getData(x);
         }
         delete fftX;
 
-        FFT<D>* fftY = fftFactory->newFFT(yDim, inverse);
+        FFT<D>* fftY = fftFactory->newFFT(yDim, forward);
         for (int x = 0; x < xDim; ++x) {
             for (int y = 0; y < yDim; ++y) fftY->setData(y, data[y*xDim + x]);
             fftY->execute();

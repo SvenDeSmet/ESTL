@@ -127,6 +127,9 @@ public:
     virtual void execute() { //printf("Starting execution with %i kernels", (int) kernels.size()); fflush(stdout);
         if (this->size == 1) { arrayDataInterface->out->setElement(0, arrayDataInterface->in->getElement(0)); }
         else { if (kernels.size() > 0) {
+            if (!forward) {
+                for (int d = 0; d < this->size; ++d) arrayDataInterface->in->setElement(d, arrayDataInterface->in->getElement(d).getConjugate());
+            }
 //          for (int q = 0; q < this->size; ++q) this->out->setElement(q, 888); data[1]->enqueueWriteArray(*commandQueue, *this->out);
             data[0]->enqueueWriteArray(*commandQueue, *arrayDataInterface->in);
 
@@ -154,6 +157,10 @@ public:
             kernelEvents[kernels.size() - 1].wait();
             if (timerComputation) timerComputation->addRun(getTime(0, true, kernels.size() - 1, false));
             for (int qG = 1; qG <= (int) kernels.size(); ++qG) kernelTimers[qG - 1].addRun(getTime(qG - 1, true, qG - 1, false));
+
+            if (!forward) {
+                for (int d = 0; d < this->size; ++d) arrayDataInterface->out->setElement(d, arrayDataInterface->out->getElement(d).getConjugate());
+            }
 
 //            printf("out"); for (int q = 0; q < this->size; ++q) this->out->getElement(q).print();
 //            data[(kernels.size() & 1) ^ 1]->enqueueReadArray(*commandQueue, *this->in);
