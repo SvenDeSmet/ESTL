@@ -32,14 +32,12 @@ HEADERS += \
     cl.hpp \
     OpenCL_FFT/procs.h \
     OpenCL_FFT/fft_internal.h \
-    OpenCL_FFT/fft_base_kernels.h \
     OpenCL_FFT/clFFT.h \
     tests/Timer.h \
     tests/Test.h \
     FFT_OpenCL_LAC.h \
     KernelGenerator.h \
-    SimpleMath.h \
-    TestCode.h
+    SimpleMath.h
 
 SOURCES += \
     Complex.cpp \
@@ -65,6 +63,8 @@ win32:LIBS += -lOpenCL
 
 # MAC
 #DEFINES += __CL_ENABLE_EXCEPTIONS
+
+
 
 
 

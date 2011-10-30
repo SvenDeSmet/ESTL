@@ -42,12 +42,15 @@ public:
 
     std::vector<int> AGs, BGs, NGs;
 
+    static int getRequiredMemory(int n) { return 3*sizeof(Complex<D>)*n; }
+    static int getMaxBatchSize(int n) { return getGlobalMemory()/getRequiredMemory(n); }
+
     FFT_OpenCL_Contiguous(int iSize, bool iForward = true, int iBatchCount = 1) : FFT<D>(iSize, iBatchCount), OpenCLAlgorithm(), forward(iForward) {
         this->dataInterface = arrayDataInterface = new DataInterfaceType(this->batchCount*this->size);
 
-        int memReq = this->size*2*sizeof(D)*this->batchCount;
-        if(memReq >= CLDevice(devicesToUse[0]).globalMemorySize()) { printf("Insufficient global memory"); } // throw exception
+        if (getMaxBatchSize(this->size) < this->batchCount) { printf("Insufficient global memory"); } // throw exception
 
+//printf("GG%ix%i --G", this->size, this->batchCount);
         data[0] = new ComplexArrayCL<float>(*context, arrayDataInterface->in);
         data[1] = new ComplexArrayCL<float>(*context, arrayDataInterface->out);
 
@@ -110,19 +113,22 @@ public:
         return (end - start) * 1.0e-9f;
     }
 
+    void printGPUDebugData(int qG) {
+        data[(qG + 1) % 2]->enqueueReadArray(*commandQueue, *arrayDataInterface->out);
+        printf("\nqG = %i", qG); for (int q = 0; q < this->size * this->batchCount; ++q) { if ((q % this->size) == 0) printf("\n");
+            arrayDataInterface->out->getElement(q).print();
+        }
+        //data[1]->enqueueReadArray(*commandQueue, *arrayDataInterface->in);
+        //printf("1 qG = %i", qG); for (int q = 0; q < this->size; ++q) arrayDataInterface->in->getElement(q).print();
+    }
+
     int getSwarmSize(int qG) { return 1; } //mAx(1, mIn(16, mIn(this->size/NGs[qG - 1], getButterflyCount(qG)))); }
     int getButterflyCount(int qG) { return this->size/BGs[qG - 1]; }
     int getSwarmCount(int qG) { return getButterflyCount(qG)/getSwarmSize(qG); }
+    int getWorkItemsPerKernel(int qG) { return getSwarmCount(qG) * this->batchCount; }
 
-    virtual double getTotalComputationFlops(int kernel) { return (5.0*this->size)*(log((double) BGs[kernel])/log(2.0)); }
+    virtual double getTotalComputationFlops(int kernel) { return (5.0*this->size)*(log((double) BGs[kernel])/log(2.0)) * this->batchCount; }
     virtual streng getKernelInfo(int kernel) { return intToStr(ceilog(BGs[kernel], 2)); }
-
-    void printGPUDebugData(int qG) {
-        data[0]->enqueueReadArray(*commandQueue, *arrayDataInterface->out);
-        printf("0 qG = %i", qG); for (int q = 0; q < this->size; ++q) arrayDataInterface->out->getElement(q).print();
-        data[1]->enqueueReadArray(*commandQueue, *arrayDataInterface->in);
-        printf("1 qG = %i", qG); for (int q = 0; q < this->size; ++q) arrayDataInterface->in->getElement(q).print();
-    }
 
     virtual void execute() { //printf("Starting execution with %i kernels", (int) kernels.size()); fflush(stdout);
         if (this->size == 1) { arrayDataInterface->out->setElement(0, arrayDataInterface->in->getElement(0)); }
@@ -130,27 +136,28 @@ public:
             if (!forward) {
                 for (int d = 0; d < this->size; ++d) arrayDataInterface->in->setElement(d, arrayDataInterface->in->getElement(d).getConjugate());
             }
-//          for (int q = 0; q < this->size; ++q) this->out->setElement(q, 888); data[1]->enqueueWriteArray(*commandQueue, *this->out);
+          for (int q = 0; q < this->size * this->batchCount; ++q) arrayDataInterface->out->setElement(q, 888); data[1]->enqueueWriteArray(*commandQueue, *arrayDataInterface->out);
             data[0]->enqueueWriteArray(*commandQueue, *arrayDataInterface->in);
 
             kernelEvents.clear();
             for (int qG = 1; qG <= (int) kernels.size(); qG++) { cl::Kernel* kernel = kernels[qG - 1]; //printf("kernel q = %i", qG);
                 size_t workGroupSize;
                 kernel->getWorkGroupInfo<size_t>(devicesToUse[0], CL_KERNEL_WORK_GROUP_SIZE, &workGroupSize); // printf("[workGroupSize = %i]", workGroupSize);
-                int localSize = mIn(this->size/BGs[qG - 1], workGroupSize);
+                int localSize = mIn(getWorkItemsPerKernel(qG), workGroupSize);
 
-                //printf("<%i %i>", workGroupSize, localSize);
+            //    printf("<%i>", getWorkItemsPerKernel(qG));
                 //printf("wgs = %i --- size = %i -- s = %i -- localSize == %i -- butterFlyCount = %i", workGroupSize, this->size, s, localSize, butterflyCount);
-                cl::KernelFunctor func = kernel->bind(*commandQueue, cl::NDRange(ceilint(getSwarmCount(qG), localSize)), cl::NDRange(localSize));
+                cl::KernelFunctor func = kernel->bind(*commandQueue, cl::NDRange(ceilint(getWorkItemsPerKernel(qG), localSize)), cl::NDRange(localSize));
                 kernel->setArg<cl_mem>(0, data[(qG ^ 1) & 1]->getData());
                 kernel->setArg<cl_mem>(1, data[(qG ^ 0) & 1]->getData());
 
- //printf("Before execution"); printGPUDebugData(qG);
+// printGPUDebugData(qG);
                 try { kernelEvents.push_back(func()); } // enqueue kernel
                 catch (cl::Error e) { printf("CL Exception"); CLException cle = CLException(e); cle.handle(); fflush(stdout); }
                 catch (...) { printf("Unknown exception"); fflush(stdout); }
 //                kernelEvents[kernelEvents.size() - 1].wait(); printf("After execution"); printGPUDebugData(qG); fflush(stdout);
             } // printf("Computation ends..."); fflush(stdout);
+//printGPUDebugData(kernels.size() + 1);
 
             data[kernels.size() & 1]->enqueueReadArray(*commandQueue, *arrayDataInterface->out);
 
@@ -168,7 +175,7 @@ public:
         } }
     }
 
-    static streng generateKernel(int kernelIx, int Aq, std::vector<int> BL, int LG, int NG, bool includeCommonDefs, int swarmSize = 1, bool preTwiddle = false) {
+    streng generateKernel(int kernelIx, int Aq, std::vector<int> BL, int LG, int NG, bool includeCommonDefs, int swarmSize = 1, bool preTwiddle = false) {
         int swarmStrideLevel = 5;
         int kL = BL.size();
         int LL = 1;
@@ -196,21 +203,29 @@ public:
     inline K add(const K a, const K b) { return komplex(a.r + b.r, a.i + b.i); };\n;";
         std::stringstream kernelhead; kernelhead << "__kernel void contiguousFFT_step" << kernelIx << "(__global float *in, __global float *out) {\n";
         std::stringstream result;
-        result << "int globid = get_global_id(0); // = phi*w + v \n\
+      //  result << "int globid = get_global_id(0); // = phi*w + v \n\
         //int swarmIxOffset = globid >> " << swarmStrideLevel << ";\n\
         //int subSwarmIx = globid & " << ((1 << swarmStrideLevel) - 1) << ";\n\
         //for (int swarmIx = 0; swarmIx < " << swarmSize << "; ++swarmIx) {\n\
         //int j = subSwarmIx + ((swarmIxOffset*" << swarmSize << " + swarmIx) << " << swarmStrideLevel << ");\n";
-        result << "int j = get_global_id(0);"; // = phi*w + v \n
+  //      result << "int j = get_global_id(0);"; // = phi*w + v \n
+        //result << "int batchOffs = 0;";
+        result << "int globid = get_global_id(0);"; // = phi*w + v \n
+        //result << "int batchOffs =;";
+//        printf("{ {%i} }", getSwarmCount(kernelIx));
+        //result << "in += " << LG << "*batchIx;";
+        //result << "out += " << LG << "*batchIx;";
 
         Array buff0 = Array("K", LL, true, "buff0_");
         Array buff1 = Array("K", LL, true, "buff1_");
         Array* buffs[2] = { &buff0, &buff1 };
         result << buff0.getDeclaration() << "\n" << buff1.getDeclaration() << "\n";
 
-        result << "  if (j < " << LG/LL << ") {\n\
+        result << "  if (globid < " << getWorkItemsPerKernel(kernelIx) << ") {\n\
+        int batchIx = (globid/" << getSwarmCount(kernelIx) << ");\
+        int j = globid - batchIx*" << getSwarmCount(kernelIx) << ";\
         int gG = " << IntegerDivision("j", LG/NG)() << ";\n\
-        int zG = j - " << LG/NG << "*gG;\n"; // zG = j % " << LG/NG << ";\n";
+        int zG = j - " << LG/NG << "*gG + batchIx*" << LG << ";\n"; // zG = j % " << LG/NG << ";\n";
         // Load data
         result << "int readStartOffset = zG + " << (LG/NG) * Bq << "*gG;";
         int plannarMask = (1 << GlobalPlannarLevel) - 1;
@@ -257,7 +272,7 @@ public:
         }
 
         // Write results
-        result << "int writeStartOffset = " << LG/NG << "*gG + zG;\n";
+        result << "int writeStartOffset = zG + " << LG/NG << "*gG;\n";
         for (int h = 0; h < Bq; ++h) { result << "{"
             << "int index = writeStartOffset + " << h*Aq*(LG/NG) << ";"
             << "int ix = ((index >> " << GlobalPlannarLevel << ") << " << (GlobalPlannarLevel + 1) << ") | (index & " << plannarMask << ");"

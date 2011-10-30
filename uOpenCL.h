@@ -323,6 +323,22 @@ public:
         commandQueue = new cl::CommandQueue(*context, devicesToUse[0], CL_QUEUE_PROFILING_ENABLE, &err); xCLErr(err);
     }
 
+    static int getGlobalMemory() {
+        std::vector<cl::Platform> platforms;
+        xCLErr(cl::Platform::get(&platforms));
+
+        for (int p = 0; p < (int) platforms.size(); ++p) { CLPlatform platform = CLPlatform(platforms[p]);
+            std::vector<cl::Device> devices;
+            xCLErr(platforms[p].getDevices(CL_DEVICE_TYPE_GPU, &devices));
+            for (int d = 0; d < (int) devices.size(); ++d) { CLDevice device = CLDevice(devices[d]);
+                if (device.available()) {
+                   return device.globalMemorySize(); // printf("Available");
+                } //else { printf("Not available"); }
+            }
+        }
+        return 0;
+    }
+
     virtual double getTotalComputationFlops(int kernel) { return 0; }
     virtual std::string getKernelInfo(int kernel) { return ""; }
 

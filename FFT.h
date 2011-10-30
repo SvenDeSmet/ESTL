@@ -70,6 +70,8 @@ public:
     FFT(int iSize, int iBatchCount) : dataInterface(NULL), size(iSize), batchCount(iBatchCount) { }
     virtual ~FFT() { delete dataInterface; }
 
+    static int getMaxBatchSize(int n) { return 1; }
+
     inline void setData(int index, Complex<D> value, int batchIndex = 0) { dataInterface->setElement(batchIndex*size + index, value); }
     inline Complex<D> getData(int index, int batchIndex = 0) { return dataInterface->getElement(batchIndex*size + index); }
 
@@ -80,14 +82,16 @@ template <class D> class FFTFactory {
 public:
     virtual streng getName() = 0;
     virtual int getVersion() { return 0; }
-    virtual FFT<D>* newFFT(int n, bool forward = true) = 0;
+    virtual FFT<D>* newFFT(int n, bool forward = true, int batchSize = 1) = 0;
+    virtual int getMaxBatchSize(int n) { return 1; }
 };
 
 template <class FFTClass> class FFTFactorySpecific : public FFTFactory<typename FFTClass::DataType> {
     typedef typename FFTClass::DataType D;
 public:
     virtual streng getName() { return FFTClass::getName(); }
-    virtual FFT<D>* newFFT(int n, bool forward = true) { return (FFT<D>*) new FFTClass(n, forward); }
+    virtual int getMaxBatchSize(int n) { return FFTClass::getMaxBatchSize(n); }
+    virtual FFT<D>* newFFT(int n, bool forward = true, int batchSize = 1) { return (FFT<D>*) new FFTClass(n, forward, batchSize); }
 };
 
 template <class D> class FFT2D {

@@ -39,11 +39,13 @@ public:
 
     std::vector<int> AGs, BGs, NGs;
 
+    static int getRequiredMemory(int n) { return 3*sizeof(Complex<D>)*n; }
+    static int getMaxBatchSize(int n) { return getGlobalMemory()/getRequiredMemory(n); }
+
     FFT_OpenCL_LAC(int iSize, bool iForward = true, int iBatchCount = 1) : FFT<D>(iSize, iBatchCount), OpenCLAlgorithm(), forward(iForward), program(NULL) {
         this->dataInterface = arrayDataInterface = new DataInterfaceType(this->batchCount*this->size);
 
-        int memReq = this->size*sizeof(clFFT_Complex)*this->batchCount;
-        if(memReq >= CLDevice(devicesToUse[0]).globalMemorySize()) { printf("Insufficient global memory"); } // throw exception
+        if (getMaxBatchSize(this->size) < this->batchCount) { printf("Insufficient global memory"); } // throw exception
 
         data[0] = new ComplexArrayCL<float>(*context, arrayDataInterface->in);
         data[1] = new ComplexArrayCL<float>(*context, arrayDataInterface->out);
@@ -56,10 +58,7 @@ public:
             BGs = std::vector<int>(log2Size/defaultBGl2, 1 << defaultBGl2);
             if (log2Size != ceilint(log2Size, defaultBGl2)) BGs.push_back(1 << (log2Size % defaultBGl2));
             computeParameters(AGs, BGs, NGs);
-            for (int qG = 1; qG <= stepsG; ++qG) { //printf("qG = %i", qG);
-                src.push_back(generateKernel(qG - 1));
-                //printf("%s\n@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@", src[src.size() - 1].c_str());
-            }
+            for (int qG = 1; qG <= stepsG; ++qG) src.push_back(generateKernel(qG - 1));
 
             program = new CLProgram(*context, src, devicesToUse);
             for (int qG = 1; qG <= stepsG; ++qG) kernels.push_back(program->getKernel(streng("contiguousFFT_step") + intToStr(qG)));
