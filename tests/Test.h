@@ -43,6 +43,16 @@ public:
     bool execute();
 };
 
+class TestFourier2DFloat : public Test {
+private:
+    typedef float D;
+    std::vector<FFTFactory<D> *> fftFactories;
+public:
+    TestFourier2DFloat(std::vector<FFTFactory<D> *> iFFTFactories) : fftFactories(iFFTFactories) { }
+
+    bool execute();
+};
+
 bool performTests();
 
 #endif /* TEST_H_ */

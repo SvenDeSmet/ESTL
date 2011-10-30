@@ -16,7 +16,8 @@ OTHER_FILES += \
     OpenCL_FFT/ReadMe.txt \
     OpenCL_FFT/param.txt \
     Measurements.txt \
-    Issues.txt
+    Issues.txt \
+    Measurements-Batch.txt
 
 HEADERS += \
     uOpenCL.h \
@@ -37,7 +38,8 @@ HEADERS += \
     tests/Test.h \
     FFT_OpenCL_LAC.h \
     KernelGenerator.h \
-    SimpleMath.h
+    SimpleMath.h \
+    DataInterface.h
 
 SOURCES += \
     Complex.cpp \
@@ -63,6 +65,8 @@ win32:LIBS += -lOpenCL
 
 # MAC
 #DEFINES += __CL_ENABLE_EXCEPTIONS
+
+
 
 
 

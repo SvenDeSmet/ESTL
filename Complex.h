@@ -71,6 +71,7 @@ public:
         R getNormSquared() const { return ((*this) * ((*this).getConjugate())).getReal(); }
         Complex<R> getNormalizedComplex() const { return (*this)/((R) sqrt(getNormSquared())); }
         Complex<R> getConjugate() const { return Complex<R>(r, -i); }
+        static Complex<R> randomUnit() { return Complex<R>(((R) rand())/RAND_MAX, ((R) rand())/RAND_MAX); }
 	
         inline R getReal() const { return r; }
         inline void setReal(R value) { r = value; }

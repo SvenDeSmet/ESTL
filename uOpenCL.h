@@ -213,13 +213,10 @@ public:
     ComplexArrayCL(cl::Context& context, int iSize, bool iPlanar) : size(iSize), planar(iPlanar) {
         cl_int err;
         if (planar) {
-            reals = clCreateBuffer(context(), CL_MEM_READ_WRITE, size*sizeof(D), NULL, &err);
-            xCLErr(err);
-            imaginaries = clCreateBuffer(context(), CL_MEM_READ_WRITE, size*sizeof(D), NULL, &err);
-            xCLErr(err);
+            reals = clCreateBuffer(context(), CL_MEM_READ_WRITE, size*sizeof(D), NULL, &err); xCLErr(err);
+            imaginaries = clCreateBuffer(context(), CL_MEM_READ_WRITE, size*sizeof(D), NULL, &err); xCLErr(err);
         } else {
-            data = clCreateBuffer(context(), CL_MEM_READ_WRITE, 2*size*sizeof(D), NULL, &err);
-            xCLErr(err);
+            data = clCreateBuffer(context(), CL_MEM_READ_WRITE, 2*size*sizeof(D), NULL, &err); xCLErr(err);
         }
     }
 

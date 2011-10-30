@@ -188,33 +188,16 @@ public:
             NL.push_back(b);
         }
         int Bq = LL;
-        std::stringstream komplex; komplex << "\n\
-    typedef float T;\n\
-    struct Komplex { T r, i; };\n\
-    typedef struct Komplex K;\n\
-    inline K komplex(T iR, T iI);\n\
-    inline K unit(int n, int d);\n\
-    inline K mul(const K a, const K b);\n\
-    inline K add(const K a, const K b);\n\
-    inline K komplex(T iR, T iI) { K k; k.r = iR; k.i = iI; return k; };\n\
-    inline K unit(int n, int d) { const float frac_PI2_d = " << (2*M_PI) << "f/d; return komplex(native_cos(frac_PI2_d*n), native_sin(frac_PI2_d*n)); };\n\
-    inline K unitC(int n, const int d) { const float dr = 1.f/d; const float frac_PI2_d = " << (2*M_PI) << "f*dr; return komplex(native_cos(frac_PI2_d*n), native_sin(frac_PI2_d*n)); };\n\
-    inline K mul(const K a, const K b) { return komplex(a.r * b.r - a.i * b.i, a.r * b.i + a.i * b.r); };\n\
-    inline K add(const K a, const K b) { return komplex(a.r + b.r, a.i + b.i); };\n;";
+
+        std::stringstream komplex;
+        if (kernelIx == 1) komplex << KomplexMath::getDeclarations();
         std::stringstream kernelhead; kernelhead << "__kernel void contiguousFFT_step" << kernelIx << "(__global float *in, __global float *out) {\n";
         std::stringstream result;
-      //  result << "int globid = get_global_id(0); // = phi*w + v \n\
         //int swarmIxOffset = globid >> " << swarmStrideLevel << ";\n\
         //int subSwarmIx = globid & " << ((1 << swarmStrideLevel) - 1) << ";\n\
         //for (int swarmIx = 0; swarmIx < " << swarmSize << "; ++swarmIx) {\n\
         //int j = subSwarmIx + ((swarmIxOffset*" << swarmSize << " + swarmIx) << " << swarmStrideLevel << ");\n";
-  //      result << "int j = get_global_id(0);"; // = phi*w + v \n
-        //result << "int batchOffs = 0;";
         result << "int globid = get_global_id(0);"; // = phi*w + v \n
-        //result << "int batchOffs =;";
-//        printf("{ {%i} }", getSwarmCount(kernelIx));
-        //result << "in += " << LG << "*batchIx;";
-        //result << "out += " << LG << "*batchIx;";
 
         Array buff0 = Array("K", LL, true, "buff0_");
         Array buff1 = Array("K", LL, true, "buff1_");
@@ -238,7 +221,7 @@ public:
         }
         if (preTwiddle) for (int sG = 0; sG < Bq; ++sG) {
             result << buff0.getItem(sG).getRepresentation()
-            << " = mul(" << buff0.getItem(sG).getRepresentation() << ", unitC(" << -sG << "*gG, "<< NG << ")" << ");\n";
+            << " = mul(" << buff0.getItem(sG).getRepresentation() << ", unit(" << -sG << "*gG, "<< NG << ")" << ");\n";
         }
 
         // Local FFT
