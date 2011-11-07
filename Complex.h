@@ -16,20 +16,19 @@
 #define GlobalAlignLevel 5
 template <class D> class AlignedArray {
 private:
-        unsigned char* mem;
-	
+    unsigned char* mem;
 public:
-        D* alignedData;
+    D* alignedData;
 	
-	AlignedArray(int size, int alignLevel = GlobalAlignLevel) {
-	    mem = new unsigned char[size * sizeof(D) + ((1 << alignLevel) - 1)];
-            alignedData = (D*) ((((long int) mem + ((1 << alignLevel) - 1)) >> alignLevel) << alignLevel);
-	}
+    AlignedArray(int size, int alignLevel = GlobalAlignLevel) {
+        mem = new unsigned char[size * sizeof(D) + ((1 << alignLevel) - 1)];
+        alignedData = (D*) ((((long int) mem + ((1 << alignLevel) - 1)) >> alignLevel) << alignLevel);
+    }
+
+    inline D& operator [] (int index)       { return alignedData[index]; }
+    inline D  operator [] (int index) const { return alignedData[index]; }
 	
-        inline D& operator [] (int index)       { return alignedData[index]; }
-        inline D  operator [] (int index) const { return alignedData[index]; }
-	
-        ~AlignedArray() { delete [] mem; }
+    ~AlignedArray() { delete [] mem; }
 };
 
 template <int plannarLevel, int elementLevel, class Array, class D>
@@ -114,6 +113,7 @@ public:
     }
 
     int getElements() const { return elements; }
+    int getSize() const { return size; }
 
     void setElement(int index, Complex<D> value) {
         plannarizedData->setElement(index, 0, value.getReal());
@@ -125,8 +125,6 @@ public:
     }
 
     D* getData() { return &(*data)[0]; }
-
-    int getSize() const { return size; }
 
     ~PlannarizedComplexArray() { delete plannarizedData; delete data; }
 };

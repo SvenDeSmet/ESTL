@@ -39,7 +39,8 @@ HEADERS += \
     FFT_OpenCL_LAC.h \
     KernelGenerator.h \
     SimpleMath.h \
-    DataInterface.h
+    DataInterface.h \
+    OpenCLFFTAlgorithm.h
 
 SOURCES += \
     Complex.cpp \
@@ -65,6 +66,9 @@ win32:LIBS += -lOpenCL
 
 # MAC
 #DEFINES += __CL_ENABLE_EXCEPTIONS
+
+
+
 
 
 

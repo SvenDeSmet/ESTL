@@ -278,10 +278,10 @@ protected:
     cl::Context* context;
     cl::CommandQueue* commandQueue;
 public:
-    Timer* timerComputation;
+    Timer *timerComputation, *timerTotal;
     std::vector<Timer> kernelTimers;
 
-    OpenCLAlgorithm() : context(NULL), commandQueue(NULL), timerComputation(NULL) {
+    OpenCLAlgorithm() : context(NULL), commandQueue(NULL), timerComputation(NULL), timerTotal(NULL) {
         std::vector<cl::Platform> platforms;
         xCLErr(cl::Platform::get(&platforms));
 

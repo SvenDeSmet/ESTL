@@ -15,14 +15,13 @@
 #include <exception>
 #include <sys/types.h>
 
-#include "uOpenCL.h"
-#include "FFT.h"
+#include "OpenCLFFTAlgorithm.h"
 #include "tests/Timer.h"
 #include "SimpleMath.h"
 
 #define DBG(a) a
 
-template <class D> class FFT_OpenCL_LAC : public FFT<D>, public OpenCLAlgorithm {
+template <class D> class FFT_OpenCL_LAC : public OpenCLFFTAlgorithm<D> {
 public:
     typedef PlannarizedDataInterface<D> DataInterfaceType;
     //typedef SplitInterleavedDataInterface<D> DataInterfaceType;
@@ -40,15 +39,15 @@ public:
     std::vector<int> AGs, BGs, NGs;
 
     static int getRequiredMemory(int n) { return 3*sizeof(Complex<D>)*n; }
-    static int getMaxBatchSize(int n) { return getGlobalMemory()/getRequiredMemory(n); }
+    static int getMaxBatchSize(int n) { return OpenCLAlgorithm::getGlobalMemory()/getRequiredMemory(n); }
 
     FFT_OpenCL_LAC(int iSize, bool iForward = true, int iBatchCount = 1) : FFT<D>(iSize, iBatchCount), OpenCLAlgorithm(), forward(iForward), program(NULL) {
         this->dataInterface = arrayDataInterface = new DataInterfaceType(this->batchCount*this->size);
 
         if (getMaxBatchSize(this->size) < this->batchCount) { printf("Insufficient global memory"); } // throw exception
 
-        data[0] = new ComplexArrayCL<float>(*context, arrayDataInterface->in);
-        data[1] = new ComplexArrayCL<float>(*context, arrayDataInterface->out);
+        data[0] = new ComplexArrayCL<float>(*this->context, arrayDataInterface->in);
+        data[1] = new ComplexArrayCL<float>(*this->context, arrayDataInterface->out);
 
         if (this->size > 1) {
             int defaultBGl2 = getDefaultLocalityFactorL2(0);
@@ -57,10 +56,10 @@ public:
 
             BGs = std::vector<int>(log2Size/defaultBGl2, 1 << defaultBGl2);
             if (log2Size != ceilint(log2Size, defaultBGl2)) BGs.push_back(1 << (log2Size % defaultBGl2));
-            computeParameters(AGs, BGs, NGs);
+            this->computeParameters(AGs, BGs, NGs);
             for (int qG = 1; qG <= stepsG; ++qG) src.push_back(generateKernel(qG - 1));
 
-            program = new CLProgram(*context, src, devicesToUse);
+            program = new CLProgram(*this->context, src, this->devicesToUse);
             for (int qG = 1; qG <= stepsG; ++qG) kernels.push_back(program->getKernel(streng("contiguousFFT_step") + intToStr(qG)));
         }
 
@@ -81,7 +80,7 @@ public:
     virtual streng getKernelInfo(int kernel) { return intToStr(ceilog(BGs[kernel], 2)); }
 
     void printGPUDebugData(int qG) {
-        data[(qG & 1) ^ 1]->enqueueReadArray(*commandQueue, *arrayDataInterface->in);
+        data[(qG & 1) ^ 1]->enqueueReadArray(*this->commandQueue, *arrayDataInterface->in);
         printf("\n%i qG = %i", (qG & 1) ^ 1, qG); for (int q = 0; q < this->size; ++q) arrayDataInterface->in->getElement(q).print((q & 7) == 7);
     }
 
@@ -103,18 +102,18 @@ public:
     virtual void execute() { //printf("Starting execution with %i kernels", (int) kernels.size()); fflush(stdout);
         if (this->size == 1) { arrayDataInterface->out->setElement(0, arrayDataInterface->in->getElement(0)); }
         else {
-            for (int q = 0; q < this->size; ++q) arrayDataInterface->out->setElement(q, 888); data[1]->enqueueWriteArray(*commandQueue, *arrayDataInterface->out);
-            data[0]->enqueueWriteArray(*commandQueue, *arrayDataInterface->in);
+            for (int q = 0; q < this->size; ++q) arrayDataInterface->out->setElement(q, 888); data[1]->enqueueWriteArray(*this->commandQueue, *arrayDataInterface->out);
+            data[0]->enqueueWriteArray(*this->commandQueue, *arrayDataInterface->in);
 
             kernelEvents.clear();
             for (int qG = 1; qG <= kernels.size(); ++qG) { cl::Kernel* kernel = kernels[qG - 1]; //printf("kernel q = %i", qG);
                 size_t workGroupSize;
-                kernel->getWorkGroupInfo<size_t>(devicesToUse[0], CL_KERNEL_WORK_GROUP_SIZE, &workGroupSize); // printf("[workGroupSize = %i]", workGroupSize);
+                kernel->getWorkGroupInfo<size_t>(this->devicesToUse[0], CL_KERNEL_WORK_GROUP_SIZE, &workGroupSize); // printf("[workGroupSize = %i]", workGroupSize);
                 int workItems = getWorkItemsPerKernel(qG);
                 int localSize = mIn(mIn(workItems, workGroupSize), getThreadsPerBlock(qG));
 
   //              printf("<<%i - %i>>", (ceilint(workItems, localSize)), (localSize));
-                cl::KernelFunctor func = kernel->bind(*commandQueue, cl::NDRange(ceilint(workItems, localSize)), cl::NDRange(localSize));
+                cl::KernelFunctor func = kernel->bind(*this->commandQueue, cl::NDRange(ceilint(workItems, localSize)), cl::NDRange(localSize));
                 setKernelParameters(qG - 1, *kernel);
 printGPUDebugData(qG);
                 try { kernelEvents.push_back(func()); } // enqueue kernel + retain kernel event
@@ -123,26 +122,21 @@ printGPUDebugData(qG);
             } // printf("Computation ends..."); fflush(stdout);
 printGPUDebugData(kernels.size() + 1);
 
-            data[kernels.size() & 1]->enqueueReadArray(*commandQueue, *arrayDataInterface->out);
+            data[kernels.size() & 1]->enqueueReadArray(*this->commandQueue, *arrayDataInterface->out);
 
             kernelEvents[kernels.size() - 1].wait();
-            if (timerComputation) timerComputation->addRun(getTime(0, true, kernels.size() - 1, false));
-            for (int qG = 1; qG <= kernels.size(); ++qG) kernelTimers[qG - 1].addRun(getTime(qG - 1, true, qG - 1, false));
+            if (this->timerComputation) this->timerComputation->addRun(getTime(0, true, kernels.size() - 1, false));
+            for (int qG = 1; qG <= kernels.size(); ++qG) this->kernelTimers[qG - 1].addRun(getTime(qG - 1, true, qG - 1, false));
         }
     }
 
     virtual ~FFT_OpenCL_LAC() {
         for (int d = 0; d < 2; ++d) delete data[d];
-        devicesToUse.clear();
         kernelEvents.clear();
         for (int k = 0; k < (int) kernels.size(); ++k) delete kernels[k];
         delete program;
     }
 
-    void computeParameters(std::vector<int>& A, std::vector<int> B, std::vector<int>& N) {
-        int b = 1;
-        for (int q = 1; q <= B.size(); ++q) { A.push_back(b); b *= B[q - 1]; N.push_back(b); }
-    }
 
 /*
 0 qG = 1(1.000000, 0.000000)(0.707107, 0.000000)(0.000000, 0.000000)(-0.707107, 0.000000)(-1.000000, 0.000000)(-0.707107, 0.000000)(-0.000000, 0.000000)(0.707107, 0.000000)
@@ -162,7 +156,7 @@ virtual streng generateKernel(int q_G) { int qG = q_G + 1;
         int kM = BM.size();
         for (int q = 0; q < kM; ++q) printf("{%i}", BM[q]);
         std::vector<int> AM, NM;
-        computeParameters(AM, BM, NM);
+        this->computeParameters(AM, BM, NM);
         //int swarmStrideLevel = 5;
 
         int phiL2 = getThreadsPerWarpL2();
@@ -206,7 +200,7 @@ virtual streng generateKernel(int q_G) { int qG = q_G + 1;
             int gM = jM/" << BGs[q_G]/NM[q_M] << ";\
             int zM = jM - " << BGs[q_G]/NM[q_M] << "*gM;";
             std::vector<int> AL, NL, BL = std::vector<int>(ceilog(BM[q_M], 2), 2);
-            computeParameters(AL, BL, NL);
+            this->computeParameters(AL, BL, NL);
             int kL = BL.size();
 
             // G&M-Level Read (and pretwiddle)

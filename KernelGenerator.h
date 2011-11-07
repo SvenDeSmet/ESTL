@@ -4,6 +4,7 @@
 // Utility classes for kernel generators
 
 #include <string>
+#include <vector>
 #include <sstream>
 #define _USE_MATH_DEFINES
 #include "math.h"
@@ -13,33 +14,37 @@ typedef std::string streng;
 streng intToStr(int i);
 
 class Expression {
-public:
-    virtual streng getRepresentation() = 0;
-    streng operator ()() { return getRepresentation(); }
-};
-
-class Value : public Expression {
 private:
     streng representation;
 public:
-    Value(streng iRepresentation) : representation(iRepresentation) { }
-    Value() { }
-
+    Expression() {}
+    Expression(streng iRepresentation) : representation(iRepresentation) { }
     virtual streng getRepresentation() { return representation; }
-//    streng operator()() { return getRepresentation(); }
+    streng operator () () { return (streng) *this; }
+    operator streng () { return getRepresentation(); }
 };
+
+
+/*
+class StructureValue : public Value {
+private:
+public:
+    StructureValue(streng iRepresentation) : Value(iRepresentation) { }
+    StructureValue() { }
+
+    virtual Value operator [] (int ix) { return Value((*this)() + streng(".") + ); } // Field with index ix
+};*/
 
 class KomplexMath {
 public:
     static streng getDeclarations() {
         std::stringstream result; result << "\
         typedef float T;\n\
-        struct Komplex { T r, i; };\n\
-        typedef struct Komplex K;\n\
-        inline K komplex(T iR, T iI);       inline K komplex(T iR, T iI) { K k; k.r = iR; k.i = iI; return k; };\n\
+        typedef float2 K;\n\
+        inline K komplex(T iR, T iI);       inline K komplex(T iR, T iI) { K k; k.x = iR; k.y = iI; return k; };\n\
         inline K unit(int n, int d);\n\
-        inline K mul(const K a, const K b); inline K mul(const K a, const K b) { return komplex(a.r * b.r - a.i * b.i, a.r * b.i + a.i * b.r); };\n\
-        inline K add(const K a, const K b); inline K add(const K a, const K b) { return komplex(a.r + b.r, a.i + b.i); }\n\
+        inline K mul(const K a, const K b); inline K mul(const K a, const K b) { return komplex(a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x); };\n\
+        inline K add(const K a, const K b); inline K add(const K a, const K b) { return komplex(a.x + b.x, a.y + b.y); }\n\
         inline K unit(int n, int d) { const float frac_PI2_d = " << (2*M_PI) << "f/d; return komplex(native_cos(frac_PI2_d*n), native_sin(frac_PI2_d*n)); };\n;";
         return result.str();
     }
@@ -61,6 +66,15 @@ public:
     }
 
     virtual streng getRepresentation() { return toFloatString(); }
+};
+
+class Assignment : public Expression {
+private:
+    Expression to, from;
+public:
+    Assignment(Expression iTo, Expression iFrom) : to(iTo), from(iFrom) { }
+
+    virtual streng getRepresentation() { return to() + streng(" = ") + from() + streng(";"); }
 };
 
 class IntegerDivision : public Expression {
@@ -87,8 +101,8 @@ class KomplexConstMultiplication : public Expression {
 private:
 public:
     KomplexUnit a;
-    Value b;
-    KomplexConstMultiplication(KomplexUnit iA, Value iB) : a(iA), b(iB) { }
+    Expression b;
+    KomplexConstMultiplication(KomplexUnit iA, Expression iB) : a(iA), b(iB) { }
 
     virtual streng getRepresentation() {
             streng bRep = b.getRepresentation();
@@ -97,11 +111,11 @@ public:
                 if (num == 0) {
                     return bRep;
                 } else if ((2*num == a.denominator) || (2*num == -a.denominator)) {
-                    return streng("komplex(-") + bRep + streng(".r, -") + bRep + streng(".i)");
+                    return streng("komplex(-") + bRep + streng(".x, -") + bRep + streng(".y)");
                 } else if ((4*num == a.denominator) || (4*num == -3*a.denominator)) {
-                    return streng("komplex(-") + bRep + streng(".i, ") + bRep + streng(".r)");
+                    return streng("komplex(-") + bRep + streng(".y, ") + bRep + streng(".x)");
                 } else {
-                    return streng("komplex(") + bRep + streng(".i, -") + bRep + streng(".r)");
+                    return streng("komplex(") + bRep + streng(".y, -") + bRep + streng(".x)");
                 }// else return streng("mul(") + a.getRepresentation() + streng(", ") + b.getRepresentation() + streng(")");
             }/* else if (mod(8*num, a.denominator) == 0) {
                 std::stringstream ss;
@@ -131,10 +145,12 @@ class Array {
 private:
     streng type;
     int length;
-    bool inRegisters;
+    bool inRegisters, structArray;
     streng name;
+    std::vector<streng> items;
 public:
-    Array(streng iType, int iLength, bool iInRegisters, streng iName) : type(iType), length(iLength), inRegisters(iInRegisters), name(iName) { }
+    Array(streng iName) : name(iName) { items.push_back("x"); items.push_back("y"); structArray = true; inRegisters = false; }
+    Array(streng iType, int iLength, bool iInRegisters, streng iName) : type(iType), length(iLength), inRegisters(iInRegisters), name(iName), structArray(false) { }
 
     streng getDeclaration() {
         streng result;
@@ -148,12 +164,105 @@ public:
         return result + streng(";");
     }
 
-    Value getItem(int ix) {
+    virtual Expression getItem(int ix) {
         if (inRegisters) { return name + "_" + intToStr(ix); }
+        else if (structArray) { return name + streng(".") + items[ix]; }
         else { return name + streng("[") + intToStr(ix) + streng("]"); }
     }
 
-    Value operator [] (int ix) { return getItem(ix); }
+    virtual Expression getItem(Expression ix) {
+        if (inRegisters) { /* throw exception*/ }
+        else { return name + streng("[") + ix() + streng("]"); }
+    }
+
+    Expression operator [] (int ix) { return getItem(ix); }
+    Expression operator [] (Expression ix) { return getItem(ix); }
+    Expression operator [] (streng ix) { return (*this)[Expression(ix)]; }
+
+//    virtual Expression assignToItem(int ix, Expression fromV)        { return getItem(ix)() + streng(" = ") + fromV() + streng(";"); }
+  //  virtual Expression assignToItem(Expression ix, Expression fromV) { return getItem(ix)() + streng(" = ") + fromV() + streng(";"); }
+
+    //virtual Expression assignFromItem(int ix, Expression toV)        { return toV() + streng(" = ") + getItem(ix)() + streng(";"); }
+    //virtual Expression assignFromItem(Expression ix, Expression toV) { return toV() + streng(" = ") + getItem(ix)() + streng(";"); }
+};
+
+template <class A>
+class CLArrayPlannarizer {
+private:
+    A& array;
+    int plannarLevel, elementLevel, plannarMask;
+public:
+    CLArrayPlannarizer(A& iArray, int iPlannarLevel, int iElementLevel) : array(iArray), plannarLevel(iPlannarLevel), elementLevel(iElementLevel), plannarMask((1 << plannarLevel) - 1) { }
+
+    Expression getPosition(Expression index) const {
+        return streng("(((") + index() + streng(") >> ") + intToStr(plannarLevel) + streng(") << ") + intToStr(plannarLevel + elementLevel) + streng(") | ((")
+         + index() + streng(") & ") + intToStr(plannarMask) + streng(")");
+    }
+
+    Expression getElementPosition(Expression index, Expression element) const {
+        return index() + streng(" | (") + element() + streng(" << ") + intToStr(plannarLevel) + streng(")");
+    }
+
+    Expression getElementPosition(Expression index, int element) const {
+        return index() + ((element > 0) ? (streng(" | (") + intToStr(element) + streng(" << ") + intToStr(plannarLevel) + streng(")")) : streng(""));
+    }
+
+    virtual Expression assignToItem(Expression ix, Expression element, Expression fromV) { std::stringstream result; result << "{";
+        result << "int index = " << getElementPosition(getPosition(ix), element)() << ";";
+        result << array["index"]() << " = " << fromV() << ";";
+        result << "}";
+        return result.str();
+    }
+
+    virtual Expression assignFromItem(Expression ix, Expression element, Expression toV) { std::stringstream result; result << "{";
+        result << "int index = " << getElementPosition(getPosition(ix), element)() << ";";
+        result << toV()  << " = " << array["index"]()<< ";";
+        result << "}";
+        return result.str();
+    }
+
+    virtual Expression assignToItem(Expression ix, Array toV) { std::stringstream result; result << "{";
+        result << "int index = " << getPosition(ix)() << ";";
+        for (int e = 0; e < (1 << elementLevel); ++e) {
+            result << toV[e]() << " = " << array[getElementPosition(Expression("index"), e)]() << ";";
+        }
+        result << "}";
+        return result.str();
+    }
+
+    virtual Expression assignFromItem(Expression ix, Array fromV) { std::stringstream result; result << "{";
+        result << "int index = " << getPosition(ix)() << ";";
+        for (int e = 0; e < (1 << elementLevel); ++e) {
+            result << array[getElementPosition(Expression("index"), e)]() << " = " << fromV[e]() << ";";
+        }
+        result << "}";
+        return result.str();
+    }
+};
+
+class PlannarizedComplexCLArray {
+private:
+    const int plannarLevel;
+    CLArrayPlannarizer<Array>* planarizedData;
+    Array* data;
+    int size, elements;
+    streng name;
+public:
+    PlannarizedComplexCLArray(int iPlannarLevel, streng iName, int iSize = -1) : plannarLevel(iPlannarLevel), size(iSize), name(iName) {
+        int roundLevel = plannarLevel + 1;
+        elements = 2*size;
+        elements = roundLevel*((elements + ((1 << roundLevel) - 1))/roundLevel);
+        data = new Array("float", size, false, name);
+        planarizedData = new CLArrayPlannarizer<Array>(*data, plannarLevel, 1);
+    }
+
+    int getElements() const { return elements; }
+    int getSize() const { return size; }
+
+    Expression assignToItem(Expression index, Array v) { return planarizedData->assignToItem(index, v); }
+    Expression assignFromItem(Expression index, Array v) { return planarizedData->assignFromItem(index, v); }
+
+    ~PlannarizedComplexCLArray() { delete planarizedData; delete data; }
 };
 
 #endif
